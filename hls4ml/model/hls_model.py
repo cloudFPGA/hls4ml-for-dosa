@@ -50,6 +50,9 @@ class HLSConfig(object):
         self._parse_hls_config()
         self._validate_hls_config()
 
+        self.has_source_script = False
+        self.source_script_path = None
+
     def get_config_value(self, key, default=None):
         return self.config.get(key, default)
 
@@ -294,6 +297,10 @@ class HLSConfig(object):
         if use_resource:
             print('WARNING: Changing model strategy to "Resource"')
             self.model_strategy = 'Resource'
+
+    def set_source_script(self, path):
+        self.has_source_script = True
+        self.source_script_path = path
 
 class HLSModel(object):
     def __init__(self, config, data_reader, layer_list, inputs=None, outputs=None):
@@ -717,7 +724,10 @@ class HLSModel(object):
         if 'linux' in sys.platform:
             backend = self.config.get_config_value('Backend', 'Vivado')
             if backend in ['Vivado', 'VivadoAccelerator']:
-                found = os.system('command -v vivado_hls > /dev/null')
+                if self.config.has_source_script:
+                    found = os.system('source {}; command -v vivado_hls > /dev/null'.format(self.config.source_script_path))
+                else:
+                    found = os.system('command -v vivado_hls > /dev/null')
                 if found != 0:
                     raise Exception('Vivado HLS installation not found. Make sure "vivado_hls" is on PATH.')
 
@@ -734,8 +744,14 @@ class HLSModel(object):
 
         curr_dir = os.getcwd()
         os.chdir(self.config.get_output_dir())
-        os.system('vivado_hls -f build_prj.tcl "reset={reset} csim={csim} synth={synth} cosim={cosim} validation={validation} export={export} vsynth={vsynth}"'
-            .format(reset=reset, csim=csim, synth=synth, cosim=cosim, validation=validation, export=export, vsynth=vsynth))
+        # os.system('vivado_hls -f build_prj.tcl "reset={reset} csim={csim} synth={synth} cosim={cosim} validation={validation} export={export} vsynth={vsynth}"'
+        #          .format(reset=reset, csim=csim, synth=synth, cosim=cosim, validation=validation, export=export, vsynth=vsynth))
+        cmd_string = ""
+        if self.config.has_source_script:
+            cmd_string = "source {}; ".format(self.config.source_script_path)
+        cmd_string += 'vivado_hls -f build_prj.tcl "reset={reset} csim={csim} synth={synth} cosim={cosim} \
+        validation={validation} export={export} vsynth={vsynth}"'.format(reset=reset, csim=csim, synth=synth, cosim=cosim, validation=validation, export=export, vsynth=vsynth)
+        os.system(cmd_string)
         os.chdir(curr_dir)
 
         return parse_vivado_report(self.config.get_output_dir())
