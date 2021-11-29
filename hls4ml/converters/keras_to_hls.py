@@ -90,7 +90,8 @@ layer_handlers = {}
 
 def register_keras_layer_handler(layer_name, handler_func):
     if layer_name in layer_handlers:
-        raise Exception('Layer {} already registered'.format(layer_name))
+        # raise Exception('Layer {} already registered'.format(layer_name))
+        pass
     else:
         layer_handlers[layer_name] = handler_func
 
