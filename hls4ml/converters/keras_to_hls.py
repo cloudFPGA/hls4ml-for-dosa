@@ -13,9 +13,9 @@ class KerasFileReader(object):
         self.config = config
         self.h5file = h5py.File(config['KerasH5'], mode='r')
 
-    def __del__(self):
-        if self.h5file:
-            self.h5file.close()
+    # def __del__(self):
+        # if self.h5file:
+        #     self.h5file.close()
 
     def _find_data(self, layer_name, var_name):
         def h5_visitor_func(name):

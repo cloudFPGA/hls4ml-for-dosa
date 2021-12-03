@@ -2,8 +2,9 @@ from __future__ import print_function
 from sys import path_importer_cache
 import numpy as np
 import math
+import onnx
 from onnx import ModelProto, GraphProto, NodeProto, TensorProto
-from onnx import  helper, numpy_helper, shape_inference
+from onnx import helper, numpy_helper, shape_inference
 
 from hls4ml.model import HLSModel
 
@@ -82,7 +83,7 @@ class ONNXDataReader:
 ####----------------------Helpers---------------------######
 def sanitize_layer_name(layer):
     new_name = layer['name']
-    if new_name[0].isdigit():
+    if len(new_name) > 0 and new_name[0].isdigit():
         new_name = layer['class_name'].lower() + new_name
     
     layer['name'] = new_name
