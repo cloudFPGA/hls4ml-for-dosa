@@ -5,6 +5,7 @@ import sys
 import re
 import numpy as np
 from collections import OrderedDict
+import math
 
 class Quantizer(object):
     def __init__(self, bits, hls_type):
@@ -646,6 +647,7 @@ class Dense(Layer):
         params['nonzeros'] = self.get_weights('weight').nonzeros
         params['product_type'] = self.model.config.backend.product_type(self.get_input_variable().type.precision, self.get_weights('weight').type.precision)
         params['strategy'] = self.get_attr('strategy')
+        params['mult_limit'] = math.ceil(self.get_attr('mult_limit') / self.reuse_factor)
 
         return self._config_template.format(**params)
 
@@ -716,6 +718,7 @@ class Conv1D(Layer):
         mult_params['n_in'] = self.get_attr('n_chan') * self.get_attr('filt_width')
         mult_params['n_out'] = self.get_attr('n_filt')
         mult_params['product_type'] = self.model.config.backend.product_type(self.get_input_variable().type.precision, self.get_weights('weight').type.precision)
+        mult_params['mult_limit'] = math.ceil(self.get_attr('mult_limit') / self.reuse_factor)
         mult_config = self._config_template[1].format(**mult_params)
 
         return mult_config + '\n' + conv_config
@@ -810,6 +813,7 @@ class SeparableConv1D(Layer):
         mult_params['n_out'] = self.get_attr('n_chan')
         mult_params['weight_t'] = self.get_weights('depthwise').type.name
         mult_params['product_type'] = self.model.config.backend.product_type(self.get_input_variable().type.precision, self.get_weights('depthwise').type.precision)
+        mult_params['mult_limit'] = math.ceil(self.get_attr('mult_limit') / self.reuse_factor)
         depthwise_mult_config = self._config_template[3].format(**mult_params)
 
         # Pointwise config
@@ -921,6 +925,7 @@ class Conv2D(Layer):
         mult_params['n_in'] = self.get_attr('n_chan') * self.get_attr('filt_height') * self.get_attr('filt_width')
         mult_params['n_out'] = self.get_attr('n_filt')
         mult_params['product_type'] = self.model.config.backend.product_type(self.get_input_variable().type.precision, self.get_weights('weight').type.precision)
+        mult_params['mult_limit'] = math.ceil(self.get_attr('mult_limit') / self.reuse_factor)
         mult_config = self._config_template[1].format(**mult_params)
 
         return mult_config + '\n' + conv_config
@@ -1074,6 +1079,7 @@ class SeparableConv2D(Layer):
         mult_params['n_out'] = self.get_attr('n_chan')
         mult_params['weight_t'] = self.get_weights('depthwise').type.name
         mult_params['product_type'] = self.model.config.backend.product_type(self.get_input_variable().type.precision, self.get_weights('depthwise').type.precision)
+        mult_params['mult_limit'] = math.ceil(self.get_attr('mult_limit') / self.reuse_factor)
         depthwise_mult_config = self._config_template[3].format(**mult_params)
 
         # Pointwise config
@@ -1112,6 +1118,7 @@ class SeparableConv2D(Layer):
         mult_params['n_out'] = self.get_attr('n_filt')
         mult_params['weight_t'] = self.get_weights('pointwise').type.name
         mult_params['product_type'] = self.model.config.backend.product_type(self.get_input_variable().type.precision, self.get_weights('pointwise').type.precision)
+        mult_params['mult_limit'] = math.ceil(self.get_attr('mult_limit') / self.reuse_factor)
         pointwise_mult_config = self._config_template[4].format(**mult_params)
 
         return depthwise_mult_config + '\n' + depthwise_config + '\n' + pointwise_mult_config + '\n' + pointwise_config + '\n' + sep_config

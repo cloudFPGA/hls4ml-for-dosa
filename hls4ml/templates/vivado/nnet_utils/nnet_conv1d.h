@@ -47,6 +47,7 @@ struct conv1d_config
     static const unsigned out_width = 10; //(N_IN + PAD_LEFT * PAD_RIGHT - (DILATION * (FILT_WIDTH - 1) + 1)) / STRIDE + 1
 
     static const unsigned reuse_factor = 1;
+    static const unsigned mult_limit = 10000;
     static const bool store_weights_in_bram = false;
     static const unsigned n_zeros = 0; // not used yet
 };
