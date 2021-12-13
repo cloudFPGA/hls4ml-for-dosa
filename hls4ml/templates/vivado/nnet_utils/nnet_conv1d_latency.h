@@ -52,7 +52,10 @@ void conv_1d_latency_cl(
     typename CONFIG_T::accum_t mult[CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan * CONFIG_T::filt_width];
     typename CONFIG_T::accum_t acc[CONFIG_T::out_width][CONFIG_T::n_filt];
 
-    #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
+    if(CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan * CONFIG_T::filt_width <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
+    }
     #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
 
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
@@ -146,7 +149,10 @@ void pointwise_conv_1d_cl(
     typename CONFIG_T::accum_t mult[CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan];
     typename CONFIG_T::accum_t acc[CONFIG_T::out_width][CONFIG_T::n_filt];
 
-    #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
+    if(CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
+    }
     #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
 
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
@@ -160,11 +166,19 @@ void pointwise_conv_1d_cl(
     //const int multiplier_limit = compute_multiplier_limit<CONFIG_T>(weights);
     const int multiplier_limit = CONFIG_T::mult_limit;
     #pragma HLS ALLOCATION instances=mul limit=multiplier_limit operation
+  
+    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
+    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
+    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
+    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
 
     // Convolve, saving all multiplication results to accumulate later
     ConvOut: for(int ii = 0; ii < CONFIG_T::out_width; ii++) {
+        #pragma HLS unroll region factor=loop_lim_outer
         ConvFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
+          #pragma HLS unroll region factor=loop_lim_inner
             ConvChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++) {
+                #pragma HLS unroll region factor=loop_lim_innermost
                 int index_mult   = ii*CONFIG_T::n_filt*CONFIG_T::n_chan + ff*CONFIG_T::n_chan + cc;
                 int index_weight = cc*CONFIG_T::n_filt + ff;
                 int index_data   = (ii*CONFIG_T::stride_width-CONFIG_T::pad_left) * CONFIG_T::n_chan + cc;
@@ -190,9 +204,12 @@ void pointwise_conv_1d_cl(
 
     // Accumulate multiplication result
     AccumOut: for(int ii = 0; ii < CONFIG_T::out_width; ii++) {
+        #pragma HLS unroll region factor=loop_lim_outer
         AccumFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
+          #pragma HLS unroll region factor=loop_lim_inner
             //Do "dot product" sum within filter and sum over channels
             AccumChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++) {
+                #pragma HLS unroll region factor=loop_lim_innermost
                 int index_mult = ii*CONFIG_T::n_filt*CONFIG_T::n_chan + ff*CONFIG_T::n_chan + cc;
                 acc[ii][ff] += mult[index_mult];
             }//end channel loop

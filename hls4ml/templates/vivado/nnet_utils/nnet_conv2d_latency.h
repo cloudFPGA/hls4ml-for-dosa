@@ -197,8 +197,14 @@ void conv_2d_latency_cl(
     typename CONFIG_T::accum_t mult[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan * CONFIG_T::filt_height * CONFIG_T::filt_width];
     typename CONFIG_T::accum_t acc[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt];
 
-    #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
-    #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
+    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan * CONFIG_T::filt_height * CONFIG_T::filt_width <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
+    }
+    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
+    }
 
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
     #pragma HLS function_instantiate variable=weights,biases
@@ -330,8 +336,14 @@ void pointwise_conv_2d_cl(
     typename CONFIG_T::accum_t mult[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan];
     typename CONFIG_T::accum_t acc[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt];
 
-    #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
-    #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
+    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
+    }
+    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
+    }
 
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
     #pragma HLS function_instantiate variable=weights,biases

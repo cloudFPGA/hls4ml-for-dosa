@@ -537,10 +537,10 @@ class Layer(object):
         for weight_name, variable in self.weights.items():
             params[weight_name + '_t'] = variable.type.name
 
-        params['loop_lim_outermost'] = self.get_attr('loop_lim_outermost', default=1)
-        params['loop_lim_outer'] = self.get_attr('loop_lim_outer', default=1)
-        params['loop_lim_inner'] = self.get_attr('loop_lim_inner', default=1)
-        params['loop_lim_innermost'] = self.get_attr('loop_lim_innermost', default=1)
+        params['loop_lim_outermost'] = self.get_attr('loop_lim_outermost', default=100)
+        params['loop_lim_outer'] = self.get_attr('loop_lim_outer', default=100)
+        params['loop_lim_inner'] = self.get_attr('loop_lim_inner', default=100)
+        params['loop_lim_innermost'] = self.get_attr('loop_lim_innermost', default=100)
         return params
 
     def get_layer_precision(self):
