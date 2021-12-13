@@ -28,6 +28,13 @@ struct dense_config
     static const unsigned reuse_factor = 1;
     static const bool store_weights_in_bram = false;
     static const unsigned n_zeros = 0;
+
+    //loop info
+    static const unsigned mult_limit = 10000;
+    static const unsigned loop_lim_outermost = 64;
+    static const unsigned loop_lim_outer = 64;
+    static const unsigned loop_lim_inner = 64;
+    static const unsigned loop_lim_innermost = 64;
     // partitioning arrays cyclically to go with roll factors?
     // Product function to use
     template<class x_T, class y_T, class res_T>

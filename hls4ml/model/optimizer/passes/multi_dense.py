@@ -16,7 +16,11 @@ class ReplaceMultidimensionalDenseWithConv(OptimizerPass):
             'padding': 'valid',
             'n_chan': input_shape[-1],
             'n_filt': node.get_attr('n_out'),
-            'mult_limit': node.get_attr('mult_limit')
+            'mult_limit': node.get_attr('mult_limit'),
+            'loop_lim_outermost': node.get_attr('loop_lim_outermost'),
+            'loop_lim_outer': node.get_attr('loop_lim_outer'),
+            'loop_lim_inner': node.get_attr('loop_lim_inner'),
+            'loop_lim_innermost': node.get_attr('loop_lim_innermost')
         }
 
         if dim == 1:

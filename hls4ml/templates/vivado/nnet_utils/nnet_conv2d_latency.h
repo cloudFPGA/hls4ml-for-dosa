@@ -6,49 +6,49 @@
 
 namespace nnet {
 
-//Computes multiplier limit
-//This function should not be synthesized into firmware
-template<typename CONFIG_T>
-    int compute_multiplier_limit_conv2d(
-    typename CONFIG_T::weight_t  weights[CONFIG_T::filt_height * CONFIG_T::filt_width * CONFIG_T::n_chan * CONFIG_T::n_filt]
-)
-{
-    int n_mult = 0;
-
-    for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
-        for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
-            for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
-                for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
-                    for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
-                        for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
-
-                                int index_weight = fh*CONFIG_T::filt_width*CONFIG_T::n_chan*CONFIG_T::n_filt
-                                                 + fw*CONFIG_T::n_chan*CONFIG_T::n_filt
-                                                 + cc*CONFIG_T::n_filt
-                                                  + ff;
-
-                                if ((oh*CONFIG_T::stride_height+fh) < CONFIG_T::pad_top
-                                || (oh*CONFIG_T::stride_height+fh) >= (CONFIG_T::pad_top+CONFIG_T::in_height)
-                                || (ow*CONFIG_T::stride_width+fw) < CONFIG_T::pad_left
-                                || (ow*CONFIG_T::stride_width+fw) >= (CONFIG_T::pad_left+CONFIG_T::in_width)) {
-                                    //padded - do nothing
-                                    continue;
-                                } else {
-                                    if (weights[index_weight] > 1e-20 || weights[index_weight] < -1e-20) {
-                                          n_mult++;
-                                    }
-                                }
-
-                        }//end mult loop
-                    }//end channel loop
-                }//end filter width loop
-            }//end filter height loop
-        }//end output width loop
-    }//end output height loop
-
-    return ceil( float(n_mult) / float(CONFIG_T::reuse_factor) );
-
-}//end compute_n_mult
+////Computes multiplier limit
+////This function should not be synthesized into firmware
+//template<typename CONFIG_T>
+//    int compute_multiplier_limit_conv2d(
+//    typename CONFIG_T::weight_t  weights[CONFIG_T::filt_height * CONFIG_T::filt_width * CONFIG_T::n_chan * CONFIG_T::n_filt]
+//)
+//{
+//    int n_mult = 0;
+//
+//    for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
+//        for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
+//            for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
+//                for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
+//                    for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
+//                        for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
+//
+//                                int index_weight = fh*CONFIG_T::filt_width*CONFIG_T::n_chan*CONFIG_T::n_filt
+//                                                 + fw*CONFIG_T::n_chan*CONFIG_T::n_filt
+//                                                 + cc*CONFIG_T::n_filt
+//                                                  + ff;
+//
+//                                if ((oh*CONFIG_T::stride_height+fh) < CONFIG_T::pad_top
+//                                || (oh*CONFIG_T::stride_height+fh) >= (CONFIG_T::pad_top+CONFIG_T::in_height)
+//                                || (ow*CONFIG_T::stride_width+fw) < CONFIG_T::pad_left
+//                                || (ow*CONFIG_T::stride_width+fw) >= (CONFIG_T::pad_left+CONFIG_T::in_width)) {
+//                                    //padded - do nothing
+//                                    continue;
+//                                } else {
+//                                    if (weights[index_weight] > 1e-20 || weights[index_weight] < -1e-20) {
+//                                          n_mult++;
+//                                    }
+//                                }
+//
+//                        }//end mult loop
+//                    }//end channel loop
+//                }//end filter width loop
+//            }//end filter height loop
+//        }//end output width loop
+//    }//end output height loop
+//
+//    return ceil( float(n_mult) / float(CONFIG_T::reuse_factor) );
+//
+//}//end compute_n_mult
 
 template<class data_T, class res_T, typename CONFIG_T>
 void conv_2d_latency_cf(
@@ -75,15 +75,25 @@ void conv_2d_latency_cf(
     //const int multiplier_limit = compute_multiplier_limit_conv2d<CONFIG_T>(weights);
     const int multiplier_limit = CONFIG_T::mult_limit;
     #pragma HLS ALLOCATION instances=mul limit=multiplier_limit operation
+  
+    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
+    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
+    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
+    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
 
     // Convolve, saving all multiplication results to accumulate later
     ConvOutHeight: for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
+        #pragma HLS unroll region factor=loop_lim_outermost
         ConvOutWidth: for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
+            #pragma HLS unroll region factor=loop_lim_outermost
             ConvFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
+                #pragma HLS unroll region factor=loop_lim_outermost
                 ConvChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
+                    #pragma HLS unroll region factor=loop_lim_outer
                     ConvFiltHeight: for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
+                        #pragma HLS unroll region factor=loop_lim_inner
                         ConvFiltWidth: for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
-
+                            #pragma HLS unroll region factor=loop_lim_innermost
                             int index_mult = oh*CONFIG_T::out_width*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ow*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ff*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
@@ -118,8 +128,11 @@ void conv_2d_latency_cf(
 
     // Initialize accumulator with input biases
     for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
+        //#pragma HLS unroll region factor=loop_lim_outer
         for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
+            //#pragma HLS unroll region factor=loop_lim_inner
             for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
+                //#pragma HLS unroll region factor=loop_lim_innermost
                 acc[oh*CONFIG_T::out_width*CONFIG_T::n_filt + ow*CONFIG_T::n_filt + ff]=biases[ff];
             }
         }
@@ -128,12 +141,18 @@ void conv_2d_latency_cf(
 
     // Accumulate multiplication result
     AccumOutHeight: for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
+        #pragma HLS unroll region factor=loop_lim_outermost
         AccumOutWidth: for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
+          #pragma HLS unroll region factor=loop_lim_outermost
             AccumFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
+            #pragma HLS unroll region factor=loop_lim_outermost
                 //Do "dot product" sum within filter and sum over channels
                 AccumChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
+                    #pragma HLS unroll region factor=loop_lim_outer
                     AccumDotHeight: for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
+                        #pragma HLS unroll region factor=loop_lim_inner
                         AccumDotWidth: for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
+                            #pragma HLS unroll region factor=loop_lim_innermost
 
                             int index_mult = oh*CONFIG_T::out_width*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ow*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
@@ -192,14 +211,25 @@ void conv_2d_latency_cl(
     //const int multiplier_limit = compute_multiplier_limit_conv2d<CONFIG_T>(weights);
     const int multiplier_limit = CONFIG_T::mult_limit;
     #pragma HLS ALLOCATION instances=mul limit=multiplier_limit operation
+    
+    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
+    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
+    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
+    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
 
     // Convolve, saving all multiplication results to accumulate later
     ConvOutHeight: for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
+        #pragma HLS unroll region factor=loop_lim_outermost
         ConvOutWidth: for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
+            #pragma HLS unroll region factor=loop_lim_outermost
             ConvFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
+                #pragma HLS unroll region factor=loop_lim_outermost
                 ConvChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
+                    #pragma HLS unroll region factor=loop_lim_outer
                     ConvFiltHeight: for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
+                        #pragma HLS unroll region factor=loop_lim_inner
                         ConvFiltWidth: for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
+                        #pragma HLS unroll region factor=loop_lim_innermost
 
                             int index_mult = oh*CONFIG_T::out_width*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ow*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
@@ -245,12 +275,18 @@ void conv_2d_latency_cl(
 
     // Accumulate multiplication result
     AccumOutHeight: for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
+        #pragma HLS unroll region factor=loop_lim_outermost
         AccumOutWidth: for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
+            #pragma HLS unroll region factor=loop_lim_outermost
             AccumFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
+                #pragma HLS unroll region factor=loop_lim_outermost
                 //Do "dot product" sum within filter and sum over channels
                 AccumChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
+                    #pragma HLS unroll region factor=loop_lim_outer
                     AccumDotHeight: for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
+                        #pragma HLS unroll region factor=loop_lim_inner
                         AccumDotWidth: for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
+                            #pragma HLS unroll region factor=loop_lim_innermost
 
                             int index_mult = oh*CONFIG_T::out_width*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ow*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width

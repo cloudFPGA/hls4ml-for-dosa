@@ -537,6 +537,10 @@ class Layer(object):
         for weight_name, variable in self.weights.items():
             params[weight_name + '_t'] = variable.type.name
 
+        params['loop_lim_outermost'] = self.get_attr('loop_lim_outermost', default=1)
+        params['loop_lim_outer'] = self.get_attr('loop_lim_outer', default=1)
+        params['loop_lim_inner'] = self.get_attr('loop_lim_inner', default=1)
+        params['loop_lim_innermost'] = self.get_attr('loop_lim_innermost', default=1)
         return params
 
     def get_layer_precision(self):
@@ -1210,6 +1214,7 @@ class Pooling2D(Layer):
             params['n_filt'] = self.get_output_variable().dim_names[0]
             params['out_height'] = self.get_output_variable().dim_names[1]
             params['out_width'] = self.get_output_variable().dim_names[2]
+        params['mult_limit'] = math.ceil(self.get_attr('mult_limit') / self.reuse_factor)
 
         return self._config_template.format(**params)
 
@@ -1233,6 +1238,7 @@ class GlobalPooling1D(Layer):
         else:
             params['n_in'] = self.get_input_variable().dim_names[1]
             params['n_filt'] = self.get_input_variable().dim_names[0]
+        params['mult_limit'] = math.ceil(self.get_attr('mult_limit') / self.reuse_factor)
 
         return self._config_template.format(**params)
 
@@ -1256,6 +1262,7 @@ class GlobalPooling2D(Layer):
         else:
             params['in_height'] = self.get_input_variable().dim_names[1]
             params['in_width'] = self.get_input_variable().dim_names[2]
+        params['mult_limit'] = math.ceil(self.get_attr('mult_limit') / self.reuse_factor)
 
         return self._config_template.format(**params)
 
