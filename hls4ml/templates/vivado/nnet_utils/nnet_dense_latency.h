@@ -38,6 +38,11 @@ void dense_latency(
     data_T cache;
     typename CONFIG_T::accum_t mult[CONFIG_T::n_in*CONFIG_T::n_out];
     typename CONFIG_T::accum_t acc[CONFIG_T::n_out];
+    
+    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
+    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
+    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
+    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
 
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
     #pragma HLS function_instantiate variable=weights,biases
@@ -49,9 +54,15 @@ void dense_latency(
         #pragma HLS PIPELINE II=CONFIG_T::reuse_factor
 
         // #pragma HLS ARRAY_PARTITION variable=weights complete // remove this line for now, it breaks compression sometimes
-        #pragma HLS ARRAY_PARTITION variable=biases complete
-        #pragma HLS ARRAY_PARTITION variable=mult complete
-        #pragma HLS ARRAY_PARTITION variable=acc complete
+        if(CONFIG_T::n_in*CONFIG_T::n_out <= 4096)
+        {
+          #pragma HLS ARRAY_PARTITION variable=mult complete
+        }
+        if(CONFIG_T::n_out <= 4096)
+        {
+          #pragma HLS ARRAY_PARTITION variable=biases complete
+          #pragma HLS ARRAY_PARTITION variable=acc complete
+        }
 
         int multiplier_limit  = ceil(float(CONFIG_T::n_in*CONFIG_T::n_out) / float(CONFIG_T::reuse_factor)) - floor(float(CONFIG_T::n_zeros) / float(CONFIG_T::reuse_factor));
         CONFIG_T::template product<data_T, typename CONFIG_T::weight_t, typename CONFIG_T::accum_t>::limit(multiplier_limit);

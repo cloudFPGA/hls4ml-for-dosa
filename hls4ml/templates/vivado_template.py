@@ -34,6 +34,11 @@ batchnorm_config_template = """struct config{index} : nnet::batchnorm_config {{
     static const unsigned io_type = nnet::{iotype};
     static const unsigned reuse_factor = {reuse};
     static const bool store_weights_in_bram = false;
+    static const unsigned mult_limit = {mult_limit};
+    static const unsigned loop_lim_outermost = {loop_lim_outermost};
+    static const unsigned loop_lim_outer = {loop_lim_outer};
+    static const unsigned loop_lim_inner = {loop_lim_inner};
+    static const unsigned loop_lim_innermost = {loop_lim_innermost};
     typedef {bias_t} bias_t;
     typedef {scale_t} scale_t;
     template<class x_T, class y_T, class res_T>
@@ -75,6 +80,10 @@ conv_mult_config_template = """struct config{index}_mult : nnet::dense_config {{
     static const unsigned n_out = {n_out};
     static const unsigned reuse_factor = {reuse};
     static const unsigned mult_limit = {mult_limit};
+    static const unsigned loop_lim_outermost = {loop_lim_outermost};
+    static const unsigned loop_lim_outer = {loop_lim_outer};
+    static const unsigned loop_lim_inner = {loop_lim_inner};
+    static const unsigned loop_lim_innermost = {loop_lim_innermost};
     static const unsigned strategy = nnet::{strategy};
     typedef {accum_t} accum_t;
     typedef {bias_t} bias_t;
@@ -186,6 +195,7 @@ pooling2d_config_template = """struct config{index} : nnet::pooling2d_config {{
     static const nnet::Pool_Op pool_op = nnet::{pool_op};
     static const nnet::conv_implementation implementation = nnet::conv_implementation::{implementation};
     static const unsigned reuse = {reuse};
+    static const unsigned mult_limit = {mult_limit};
     static const unsigned loop_lim_outermost = {loop_lim_outermost};
     static const unsigned loop_lim_outer = {loop_lim_outer};
     static const unsigned loop_lim_inner = {loop_lim_inner};
@@ -199,6 +209,7 @@ global_pooling1d_config_template = """struct config{index} : nnet::pooling1d_con
     static const unsigned n_filt = {n_filt};
     static const nnet::Pool_Op pool_op = nnet::{pool_op};
     static const unsigned reuse = {reuse};
+    static const unsigned mult_limit = {mult_limit};
     static const unsigned loop_lim_outermost = {loop_lim_outermost};
     static const unsigned loop_lim_outer = {loop_lim_outer};
     static const unsigned loop_lim_inner = {loop_lim_inner};
@@ -212,6 +223,7 @@ global_pooling2d_config_template = """struct config{index} : nnet::pooling2d_con
     static const unsigned n_filt = {n_filt};
     static const nnet::Pool_Op pool_op = nnet::{pool_op};
     static const unsigned reuse = {reuse};
+    static const unsigned mult_limit = {mult_limit};
     static const unsigned loop_lim_outermost = {loop_lim_outermost};
     static const unsigned loop_lim_outer = {loop_lim_outer};
     static const unsigned loop_lim_inner = {loop_lim_inner};
@@ -247,6 +259,11 @@ dot_config_template = """struct config{index} : nnet::dot_config {{
     static const unsigned n_in = {n_in};
     static const unsigned n_out = {n_out};
     static const unsigned reuse_factor = {reuse};
+    static const unsigned mult_limit = {mult_limit};
+    static const unsigned loop_lim_outermost = {loop_lim_outermost};
+    static const unsigned loop_lim_outer = {loop_lim_outer};
+    static const unsigned loop_lim_inner = {loop_lim_inner};
+    static const unsigned loop_lim_innermost = {loop_lim_innermost};
     typedef {accum_t} accum_t;
     template<class x_T, class y_T, class res_T>
     using product = nnet::product::{product_type}<x_T, y_T, res_T>;

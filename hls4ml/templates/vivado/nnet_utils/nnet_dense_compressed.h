@@ -46,10 +46,18 @@ void dense_compressed(
 {
 
     const int multiplier_limit = DIV_ROUNDUP(CONFIG_T::n_nonzeros, CONFIG_T::reuse_factor);
+    
+    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
+    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
+    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
+    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
 
     typename CONFIG_T::accum_t acc [CONFIG_T::n_out];
-    #pragma HLS ARRAY_PARTITION variable=acc    complete
-    #pragma HLS ARRAY_PARTITION variable=biases complete
+    if(CONFIG_T::n_out <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=acc    complete
+      #pragma HLS ARRAY_PARTITION variable=biases complete
+    }
     #pragma HLS ARRAY_RESHAPE   variable=weights block factor=multiplier_limit
     //if (CONFIG_T::store_weights_in_bram){
     //#pragma HLS RESOURCE variable=weights core=ROM_1P_BRAM
@@ -66,20 +74,26 @@ void dense_compressed(
     const int rufactor = CONFIG_T::reuse_factor;
     ReuseLoop:
     for(unsigned ir = 0; ir < rufactor; ir++) {
-        #pragma HLS PIPELINE  II=1 rewind
+        //#pragma HLS PIPELINE  II=1 rewind
+        #pragma HLS PIPELINE  II=loop_lim_inner rewind //TODO
 
         typename CONFIG_T::accum_t mult[CONFIG_T::n_out];
-        #pragma HLS ARRAY_PARTITION variable=mult complete
+        if(CONFIG_T::n_out <= 4096)
+        {
+          #pragma HLS ARRAY_PARTITION variable=mult complete
+        }
 
         ResetMult:
         for(int imult = 0; imult < CONFIG_T::n_out; imult++) {
-            #pragma HLS UNROLL
+            //#pragma HLS UNROLL
+            #pragma HLS unroll region factor=loop_lim_innermost
             mult[imult] = 0;
         }
 
         CompressedMultLoop:
         for(unsigned im = 0; im < multiplier_limit; im++) {
-            #pragma HLS UNROLL
+            //#pragma HLS UNROLL
+            #pragma HLS unroll region factor=loop_lim_innermost
             unsigned w = im * rufactor + ir;
             auto row = weights[w].row_index;
             auto col = weights[w].col_index;
@@ -98,7 +112,8 @@ void dense_compressed(
     // Cast to "res_t" type
     ResultLoop:
     for(unsigned i = 0; i < CONFIG_T::n_out; i++){
-        #pragma HLS UNROLL
+        //#pragma HLS UNROLL
+        #pragma HLS unroll region factor=loop_lim_inner
         //res[i] = (res_T) (acc[i]);
         res[i] = cast<data_T, res_T, CONFIG_T>(acc[i]);
     }

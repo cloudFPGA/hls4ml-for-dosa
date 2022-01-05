@@ -57,8 +57,14 @@ void conv_2d_full(
     res_T res_col[CONFIG_T::n_filt];
 
     //#pragma HLS ARRAY_PARTITION variable=data_conv complete
-    #pragma HLS ARRAY_PARTITION variable=data_col complete
-    #pragma HLS ARRAY_PARTITION variable=res_col complete
+    if(CONFIG_T::filt_height * CONFIG_T::filt_width * CONFIG_T::n_chan <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=data_col complete
+    }
+    if(CONFIG_T::n_filt)
+    {
+      #pragma HLS ARRAY_PARTITION variable=res_col complete
+    }
 
     im2col_2d<data_T, CONFIG_T>(data, data_conv);
 
@@ -81,13 +87,21 @@ void im2col_2d_cf(
     const int row,
     const int col)
 {
+    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
+    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
+    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
+    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
+
     const int channel_size = CONFIG_T::in_height * CONFIG_T::in_width;
     int index = 0;
     for (int channel = CONFIG_T::n_chan; channel--; data += channel_size) {
-        #pragma HLS UNROLL
+        //#pragma HLS UNROLL
+        #pragma HLS unroll region factor=loop_lim_outer
         for (int kernel_row = 0; kernel_row < CONFIG_T::filt_height; kernel_row++) {
+            #pragma HLS unroll region factor=loop_lim_inner
             int input_row = -CONFIG_T::pad_top + kernel_row * CONFIG_T::dilation_height + row * CONFIG_T::stride_height;
             for (int kernel_col = 0; kernel_col < CONFIG_T::filt_width; kernel_col++) {
+                #pragma HLS unroll region factor=loop_lim_innermost
                 if (input_row < 0 || input_row > CONFIG_T::in_height) {
                     data_col[index++] = 0;
                 } else {
@@ -127,14 +141,26 @@ void conv_2d_resource_cf(
     data_T data_col[CONFIG_T::filt_height * CONFIG_T::filt_width * CONFIG_T::n_chan];
     res_T res_col[CONFIG_T::n_filt];
 
-    #pragma HLS ARRAY_PARTITION variable=data_col complete
-    #pragma HLS ARRAY_PARTITION variable=res_col complete
-    
+    if(CONFIG_T::filt_height * CONFIG_T::filt_width * CONFIG_T::n_chan <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=data_col complete
+    }
+    if(CONFIG_T::n_filt <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=res_col complete
+    }
+
+    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
+    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
+    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
+    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
+
     HeightLoop:
     for (int i = 0; i < CONFIG_T::out_height; i++) {
         WidthLoop:
         for (int j = 0; j < CONFIG_T::out_width; j++) {
-            #pragma HLS PIPELINE
+            //#pragma HLS PIPELINE
+            #pragma HLS PIPELINE II=loop_lim_innermost //TODO
             im2col_2d_cf<data_T, CONFIG_T>(data, data_col, i, j);
             dense<data_T, res_T, typename CONFIG_T::mult_config>(data_col, res_col, weights, biases);
             FiltLoop:
@@ -153,12 +179,20 @@ void im2col_2d_cl(
     const int row,
     const int col)
 {
+    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
+    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
+    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
+    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
+    
     int index = 0;
     for (int kernel_row = 0; kernel_row < CONFIG_T::filt_height; kernel_row++) {
-        #pragma HLS UNROLL
+        //#pragma HLS UNROLL
+        #pragma HLS unroll region factor=loop_lim_outer
         int input_row = -CONFIG_T::pad_top + kernel_row * CONFIG_T::dilation_height + row * CONFIG_T::stride_height;
         for (int kernel_col = 0; kernel_col < CONFIG_T::filt_width; kernel_col++) {
+            #pragma HLS unroll region factor=loop_lim_inner
             for (int channel = 0; channel < CONFIG_T::n_chan; channel++) {
+                #pragma HLS unroll region factor=loop_lim_innermost
                 if (input_row < 0 || input_row >= CONFIG_T::in_height) {
                     data_col[index++] = 0;
                 } else {
@@ -194,14 +228,26 @@ void conv_2d_resource_cl(
     data_T data_col[CONFIG_T::filt_height * CONFIG_T::filt_width * CONFIG_T::n_chan];
     res_T res_col[CONFIG_T::n_filt];
 
-    #pragma HLS ARRAY_PARTITION variable=data_col complete
-    #pragma HLS ARRAY_PARTITION variable=res_col complete
-    
+    if(CONFIG_T::filt_height * CONFIG_T::filt_width * CONFIG_T::n_chan <= 4096)
+    {
+      #pragma HLS ARRAY_PARTITION variable=data_col complete
+    }
+    if(CONFIG_T::n_filt)
+    {
+      #pragma HLS ARRAY_PARTITION variable=res_col complete
+    }
+
+    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
+    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
+    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
+    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
+
     HeightLoop:
     for (int i = 0; i < CONFIG_T::out_height; i++) {
         WidthLoop:
         for (int j = 0; j < CONFIG_T::out_width; j++) {
-            #pragma HLS PIPELINE
+            //#pragma HLS PIPELINE
+            #pragma HLS PIPELINE II=loop_lim_innermost //TODO
             im2col_2d_cl<data_T, CONFIG_T>(data, data_col, i, j);
             dense<data_T, res_T, typename CONFIG_T::mult_config>(data_col, res_col, weights, biases);
             FiltLoop:
