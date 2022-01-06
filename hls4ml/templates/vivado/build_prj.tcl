@@ -1,21 +1,25 @@
 #################
 #    HLS4ML
 #################
-array set opt {
-  reset      0
-  csim       1
-  synth      1
-  cosim      1
-  validation 1
-  export     0
-  vsynth     0
-}
 
-foreach arg $::argv {
-  foreach o [lsort [array names opt]] {
-    regexp "$o=+(\\w+)" $arg unused $opt($o)
-  }
-}
+# array set opt {
+#   reset      0
+#   csim       1
+#   synth      1
+#   cosim      1
+#   validation 1
+#   export     0
+#   vsynth     0
+# }
+#
+# foreach arg $::argv {
+#   foreach o [lsort [array names opt]] {
+#     regexp "$o=+(\\w+)" $arg unused opt($o)
+#   }
+# }
+
+array set opt [list reset $env(dosa_hls4ml_reset) csim $env(dosa_hls4ml_csim) synth $env(dosa_hls4ml_synth) cosim $env(dosa_hls4ml_cosim) validation $env(dosa_hls4ml_validation) export $env(dosa_hls4ml_export) vsynth $env(dosa_hls4ml_vsynth)]
+
 
 proc report_time { op_name time_start time_end } {
   set time_taken [expr $time_end - $time_start]
