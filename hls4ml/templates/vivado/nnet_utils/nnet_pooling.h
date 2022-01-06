@@ -57,11 +57,11 @@ T avg(T (&x)[N]){
 enum Pool_Op { Max, Average }; // L2Norm };
 template<typename T, int N, Pool_Op op>
 T pool_op(T (&x)[N]){
-	switch(op){
-	case Max: return max<T, N>(x);
-	case Average: return avg(x);
-	// case L2Norm: return l2norm<T, N>(x);
-	}
+  switch(op){
+  case Max: return max<T, N>(x);
+  case Average: return avg(x);
+  // case L2Norm: return l2norm<T, N>(x);
+  }
 }
 
 template<typename T, Pool_Op op>
@@ -109,8 +109,10 @@ template<class data_T, class res_T, typename CONFIG_T>
 void pooling1d_cl(data_T data[CONFIG_T::n_in * CONFIG_T::n_filt], res_T res[CONFIG_T::n_out * CONFIG_T::n_filt]) {
 
   // TODO partition the arrays according to the reuse factor
-  const int limit = pool_op_limit_1d<CONFIG_T>();
-  #pragma HLS ALLOCATION instances=pool_op limit=limit function
+  //const int limit = pool_op_limit_1d<CONFIG_T>();
+  //#pragma HLS ALLOCATION instances=pool_op limit=limit function
+  const int multiplier_limit = CONFIG_T::mult_limit;
+  #pragma HLS ALLOCATION instances=pool_op limit=mult_limit function
   // Add any necessary padding
   unsigned padded_width = CONFIG_T::n_in + CONFIG_T::pad_left + CONFIG_T::pad_right;
   if (CONFIG_T::pad_left == 0 && CONFIG_T::pad_right == 0) {
@@ -151,7 +153,7 @@ void pooling1d_cl(data_T data[CONFIG_T::n_in * CONFIG_T::n_filt], res_T res[CONF
         data_T rescale = CONFIG_T::pool_width / img_overlap;
         res[(ii/CONFIG_T::stride_width)* CONFIG_T::n_filt + ff] *= rescale;
       }
-	  }
+    }
   }
 }
 
@@ -241,43 +243,43 @@ void pooling2d_cl(data_T data[CONFIG_T::in_height * CONFIG_T::in_width * CONFIG_
   const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
 
   for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
-	  // Loop over input image y in steps of stride
+    // Loop over input image y in steps of stride
     #pragma HLS unroll region factor=loop_lim_outermost
-	  for(int ii = 0; ii < padded_height; ii += CONFIG_T::stride_height){
-		  // Loop over input image x in steps of stride
+    for(int ii = 0; ii < padded_height; ii += CONFIG_T::stride_height){
+      // Loop over input image x in steps of stride
       #pragma HLS unroll region factor=loop_lim_outer
-		  for(int jj = 0; jj < padded_width; jj += CONFIG_T::stride_width){
+      for(int jj = 0; jj < padded_width; jj += CONFIG_T::stride_width){
         #pragma HLS unroll region factor=loop_lim_inner
-			  data_T pool[CONFIG_T::pool_height * CONFIG_T::pool_width];
+        data_T pool[CONFIG_T::pool_height * CONFIG_T::pool_width];
         // Keep track of number of pixels in image vs padding region
         unsigned img_overlap = 0;
-			  // Loop over pool window y
-			  for(int kk = 0; kk < CONFIG_T::stride_height; kk++){
+        // Loop over pool window y
+        for(int kk = 0; kk < CONFIG_T::stride_height; kk++){
         #pragma HLS unroll region factor=loop_lim_innermost
-				  // Loop over pool window x
-				  for(int ll = 0; ll < CONFIG_T::stride_width; ll++){
+          // Loop over pool window x
+          for(int ll = 0; ll < CONFIG_T::stride_width; ll++){
           #pragma HLS unroll region //complette
             if(ii+kk < CONFIG_T::pad_top || ii+kk >= (padded_height - CONFIG_T::pad_bottom) || jj+ll < CONFIG_T::pad_left || jj+ll >= (padded_width - CONFIG_T::pad_right)){
               // Add padding
               pool[kk * CONFIG_T::stride_width + ll] = pad_val<data_T, CONFIG_T::pool_op>();
             }else{
-  					  pool[kk * CONFIG_T::stride_width + ll] = data[(ii + kk) * CONFIG_T::in_width * CONFIG_T::n_filt + (jj + ll) * CONFIG_T::n_filt + ff];
+              pool[kk * CONFIG_T::stride_width + ll] = data[(ii + kk) * CONFIG_T::in_width * CONFIG_T::n_filt + (jj + ll) * CONFIG_T::n_filt + ff];
               img_overlap++;
             }
-				  }
-			  }
-			  // do the pooling
+          }
+        }
+        // do the pooling
         // TODO in the case of average pooling, need to reduce height * width to area of pool window
         // not overlapping padding region
-			  res[(ii/CONFIG_T::stride_height) * CONFIG_T::out_width * CONFIG_T::n_filt + (jj/CONFIG_T::stride_width)* CONFIG_T::n_filt + ff] =
-					  pool_op<data_T, CONFIG_T::pool_height*CONFIG_T::pool_width, CONFIG_T::pool_op>(pool);
+        res[(ii/CONFIG_T::stride_height) * CONFIG_T::out_width * CONFIG_T::n_filt + (jj/CONFIG_T::stride_width)* CONFIG_T::n_filt + ff] =
+            pool_op<data_T, CONFIG_T::pool_height*CONFIG_T::pool_width, CONFIG_T::pool_op>(pool);
         // If the pool op is Average, the zero-padding needs to be removed from the results
         if(CONFIG_T::pool_op == Average){
           data_T rescale = CONFIG_T::pool_height * CONFIG_T::pool_width / img_overlap;
           res[(ii/CONFIG_T::stride_height) * CONFIG_T::out_width * CONFIG_T::n_filt + (jj/CONFIG_T::stride_width)* CONFIG_T::n_filt + ff] *= rescale;
         }
-		  }
-	  }
+      }
+    }
   }
 }
 
@@ -303,43 +305,43 @@ void pooling2d_cf(data_T data[CONFIG_T::in_height * CONFIG_T::in_width * CONFIG_
   const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
 
   for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
-	  // Loop over input image y in steps of stride
+    // Loop over input image y in steps of stride
     #pragma HLS unroll region factor=loop_lim_outermost
-	  for(int ii = 0; ii < padded_height; ii += CONFIG_T::stride_height){
-		  // Loop over input image x in steps of stride
+    for(int ii = 0; ii < padded_height; ii += CONFIG_T::stride_height){
+      // Loop over input image x in steps of stride
       #pragma HLS unroll region factor=loop_lim_outer
-		  for(int jj = 0; jj < padded_width; jj += CONFIG_T::stride_width){
-			  data_T pool[CONFIG_T::pool_height * CONFIG_T::pool_width];
+      for(int jj = 0; jj < padded_width; jj += CONFIG_T::stride_width){
+        data_T pool[CONFIG_T::pool_height * CONFIG_T::pool_width];
         #pragma HLS unroll region factor=loop_lim_inner
         // Keep track of number of pixels in image vs padding region
         unsigned img_overlap = 0;
-			  // Loop over pool window y
-			  for(int kk = 0; kk < CONFIG_T::stride_height; kk++){
+        // Loop over pool window y
+        for(int kk = 0; kk < CONFIG_T::stride_height; kk++){
           #pragma HLS unroll region factor=loop_lim_innermost
-				  // Loop over pool window x
-				  for(int ll = 0; ll < CONFIG_T::stride_width; ll++){
+          // Loop over pool window x
+          for(int ll = 0; ll < CONFIG_T::stride_width; ll++){
             #pragma HLS unroll region //complete
             if(ii+kk < CONFIG_T::pad_top || ii+kk >= (padded_height - CONFIG_T::pad_bottom) || jj+ll < CONFIG_T::pad_left || jj+ll >= (padded_width - CONFIG_T::pad_right)){
               // Add padding
               pool[kk * CONFIG_T::stride_width + ll] = pad_val<data_T, CONFIG_T::pool_op>();
             }else{
-  					  pool[kk * CONFIG_T::stride_width + ll] = data[(ii + kk) * CONFIG_T::in_width + ff * CONFIG_T::in_width*CONFIG_T::in_height + ll + jj];
+              pool[kk * CONFIG_T::stride_width + ll] = data[(ii + kk) * CONFIG_T::in_width + ff * CONFIG_T::in_width*CONFIG_T::in_height + ll + jj];
               img_overlap++;
             }
-				  }
-			  }
-			  // do the pooling
+          }
+        }
+        // do the pooling
         // TODO in the case of average pooling, need to reduce height * width to area of pool window
         // not overlapping padding region
-			  res[(ii/CONFIG_T::stride_height) * CONFIG_T::out_width + (jj/CONFIG_T::stride_width) + ff* CONFIG_T::out_height* CONFIG_T::out_width] =
-					  pool_op<data_T, CONFIG_T::pool_height*CONFIG_T::pool_width, CONFIG_T::pool_op>(pool);
+        res[(ii/CONFIG_T::stride_height) * CONFIG_T::out_width + (jj/CONFIG_T::stride_width) + ff* CONFIG_T::out_height* CONFIG_T::out_width] =
+            pool_op<data_T, CONFIG_T::pool_height*CONFIG_T::pool_width, CONFIG_T::pool_op>(pool);
         // If the pool op is Average, the zero-padding needs to be removed from the results
         if(CONFIG_T::pool_op == Average){
           data_T rescale = CONFIG_T::pool_height * CONFIG_T::pool_width / img_overlap;
           res[(ii/CONFIG_T::stride_height) * CONFIG_T::out_width + (jj/CONFIG_T::stride_width) + ff* CONFIG_T::out_height* CONFIG_T::out_width] *= rescale;
         }
-		  }
-	  }
+      }
+    }
   }
 }
 

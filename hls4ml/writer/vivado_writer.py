@@ -121,6 +121,10 @@ class VivadoWriter(Writer):
             typ = 'complete'
             factor = 0
 
+        # TODO avoid FIFO waste?
+        if mode == 'reshape':
+            return '//DOSA: automatically skipped ARRAY_RESHAPE for variable={}'.format(variable.name)
+
         if mode in ['partition', 'reshape']:
             if typ == 'complete':
                 template = '#pragma HLS ARRAY_{mode} variable={name} {type} dim={dim}'
