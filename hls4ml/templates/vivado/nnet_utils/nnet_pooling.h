@@ -112,7 +112,7 @@ void pooling1d_cl(data_T data[CONFIG_T::n_in * CONFIG_T::n_filt], res_T res[CONF
   //const int limit = pool_op_limit_1d<CONFIG_T>();
   //#pragma HLS ALLOCATION instances=pool_op limit=limit function
   const int multiplier_limit = CONFIG_T::mult_limit;
-  #pragma HLS ALLOCATION instances=pool_op limit=mult_limit function
+  #pragma HLS ALLOCATION instances=pool_op limit=multiplier_limit function
   // Add any necessary padding
   unsigned padded_width = CONFIG_T::n_in + CONFIG_T::pad_left + CONFIG_T::pad_right;
   if (CONFIG_T::pad_left == 0 && CONFIG_T::pad_right == 0) {
@@ -126,15 +126,17 @@ void pooling1d_cl(data_T data[CONFIG_T::n_in * CONFIG_T::n_filt], res_T res[CONF
 
   for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
     // Loop over input image x in steps of stride
-    #pragma HLS unroll region factor=loop_lim_inner
+    #pragma HLS unroll region factor=loop_lim_outer
     for(int ii = 0; ii < padded_width; ii += CONFIG_T::stride_width) {
-      #pragma HLS unroll region factor=loop_lim_innermost
+      #pragma HLS unroll region factor=loop_lim_inner
       data_T pool[CONFIG_T::pool_width];
+      #pragma HLS ARRAY_PARTITION variable=pool complete
       // Keep track of number of pixels in image vs padding region
       unsigned img_overlap = 0;
       // Loop over pool window x
       for(int jj = 0; jj < CONFIG_T::stride_width; jj++) {
-        #pragma HLS unroll region //complete
+        //#pragma HLS unroll region //complete
+        #pragma HLS unroll region factor=loop_lim_innermost
         if(ii+jj < CONFIG_T::pad_left || ii+jj >= (padded_width - CONFIG_T::pad_right)) {
           // Add padding
           pool[jj] = pad_val<data_T, CONFIG_T::pool_op>();
@@ -251,6 +253,7 @@ void pooling2d_cl(data_T data[CONFIG_T::in_height * CONFIG_T::in_width * CONFIG_
       for(int jj = 0; jj < padded_width; jj += CONFIG_T::stride_width){
         #pragma HLS unroll region factor=loop_lim_inner
         data_T pool[CONFIG_T::pool_height * CONFIG_T::pool_width];
+        #pragma HLS ARRAY_PARTITION variable=pool complete
         // Keep track of number of pixels in image vs padding region
         unsigned img_overlap = 0;
         // Loop over pool window y
@@ -258,7 +261,8 @@ void pooling2d_cl(data_T data[CONFIG_T::in_height * CONFIG_T::in_width * CONFIG_
         #pragma HLS unroll region factor=loop_lim_innermost
           // Loop over pool window x
           for(int ll = 0; ll < CONFIG_T::stride_width; ll++){
-          #pragma HLS unroll region //complette
+            //#pragma HLS unroll region //complete
+            #pragma HLS unroll region factor=loop_lim_innermost
             if(ii+kk < CONFIG_T::pad_top || ii+kk >= (padded_height - CONFIG_T::pad_bottom) || jj+ll < CONFIG_T::pad_left || jj+ll >= (padded_width - CONFIG_T::pad_right)){
               // Add padding
               pool[kk * CONFIG_T::stride_width + ll] = pad_val<data_T, CONFIG_T::pool_op>();
@@ -311,8 +315,9 @@ void pooling2d_cf(data_T data[CONFIG_T::in_height * CONFIG_T::in_width * CONFIG_
       // Loop over input image x in steps of stride
       #pragma HLS unroll region factor=loop_lim_outer
       for(int jj = 0; jj < padded_width; jj += CONFIG_T::stride_width){
-        data_T pool[CONFIG_T::pool_height * CONFIG_T::pool_width];
         #pragma HLS unroll region factor=loop_lim_inner
+        data_T pool[CONFIG_T::pool_height * CONFIG_T::pool_width];
+        #pragma HLS ARRAY_PARTITION variable=pool complete
         // Keep track of number of pixels in image vs padding region
         unsigned img_overlap = 0;
         // Loop over pool window y
@@ -320,7 +325,8 @@ void pooling2d_cf(data_T data[CONFIG_T::in_height * CONFIG_T::in_width * CONFIG_
           #pragma HLS unroll region factor=loop_lim_innermost
           // Loop over pool window x
           for(int ll = 0; ll < CONFIG_T::stride_width; ll++){
-            #pragma HLS unroll region //complete
+            //#pragma HLS unroll region //complete
+            #pragma HLS unroll region factor=loop_lim_innermost
             if(ii+kk < CONFIG_T::pad_top || ii+kk >= (padded_height - CONFIG_T::pad_bottom) || jj+ll < CONFIG_T::pad_left || jj+ll >= (padded_width - CONFIG_T::pad_right)){
               // Add padding
               pool[kk * CONFIG_T::stride_width + ll] = pad_val<data_T, CONFIG_T::pool_op>();
