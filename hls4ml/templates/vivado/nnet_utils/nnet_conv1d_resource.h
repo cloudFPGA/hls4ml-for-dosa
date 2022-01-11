@@ -17,14 +17,14 @@ void im2col_1d(data_T data[CONFIG_T::in_width * CONFIG_T::n_chan], data_T data_c
 
     for (int channel = CONFIG_T::n_chan; channel--; data += CONFIG_T::in_width) {
         //#pragma HLS PIPELINE II=1 rewind
-        #pragma HLS PIPELINE II=loop_lim_inner rewind //TODO
+        //#pragma HLS PIPELINE II=loop_lim_inner rewind //TODO
     for (int kernel_col = 0; kernel_col < CONFIG_T::filt_width; kernel_col++) {
             //#pragma HLS UNROLL
-            #pragma HLS unroll region factor=loop_lim_inner
+            //#pragma HLS unroll region factor=loop_lim_inner
             int input_col = -CONFIG_T::pad_left + kernel_col * CONFIG_T::dilation;
             for (int output_col = CONFIG_T::out_width; output_col; output_col--) {
-                //#pragma HLS UNROLL
-                #pragma HLS unroll region factor=loop_lim_innermost
+                #pragma HLS UNROLL
+                //#pragma HLS unroll region factor=loop_lim_innermost
                 if (input_col >= 0 && input_col < CONFIG_T::in_width) {
                     *(data_col++) = data[input_col];
                     //data_col[index] = data[input_col];
@@ -70,15 +70,15 @@ void conv_1d_full(
     im2col_1d<data_T, CONFIG_T>(data, data_conv);
 
     for (int i = 0; i < CONFIG_T::out_width; i++) {
-        //#pragma HLS UNROLL
-        #pragma HLS unroll region factor=loop_lim_inner
+        #pragma HLS UNROLL
+        //#pragma HLS unroll region factor=loop_lim_inner
         for (int j = 0; j < CONFIG_T::filt_width * CONFIG_T::n_chan; j++) {
-            #pragma HLS unroll region factor=loop_lim_innermost
+            //#pragma HLS unroll region factor=loop_lim_innermost
             data_col[j] = data_conv[j * CONFIG_T::out_width + i];
         }
         dense_resource<data_T, res_T, typename CONFIG_T::mult_config>(data_col, res_col, weights, biases);
         for (int j = 0; j < CONFIG_T::n_filt; j++) {
-            #pragma HLS unroll region factor=loop_lim_innermost
+            //#pragma HLS unroll region factor=loop_lim_innermost
             //res[i * CONFIG_T::n_filt + j] = res_col[j];
             res[j * CONFIG_T::out_width + i] = res_col[j]; // Transposed order
         }
@@ -97,11 +97,11 @@ void im2col_1d_cf_idx(data_T data[CONFIG_T::in_width * CONFIG_T::n_chan], data_T
     for (int channel = 0; channel < CONFIG_T::n_chan; channel++) {
     //#pragma HLS UNROLL
         //#pragma HLS PIPELINE II=1 rewind
-        #pragma HLS PIPELINE II=loop_lim_inner rewind //TODO
+        //#pragma HLS PIPELINE II=loop_lim_inner rewind //TODO
         KernelLoop:
         for (int kernel_col = 0; kernel_col < CONFIG_T::filt_width; kernel_col++) {
-            //#pragma HLS UNROLL
-            #pragma HLS unroll region factor=loop_lim_innermost
+            #pragma HLS UNROLL
+            //#pragma HLS unroll region factor=loop_lim_innermost
             int input_col = -CONFIG_T::pad_left + kernel_col * CONFIG_T::dilation + col * CONFIG_T::stride_width;
             if (input_col >= 0 && input_col < CONFIG_T::in_width) {
                 //*(data_col++) = data[input_col];
@@ -125,11 +125,11 @@ void im2col_1d_cf(data_T data[CONFIG_T::in_width * CONFIG_T::n_chan], data_T dat
 
     ChannelLoop:
     for (int channel = CONFIG_T::n_chan; channel--; data += CONFIG_T::in_width) {
-    //#pragma HLS UNROLL
-    #pragma HLS unroll region factor=loop_lim_inner
+    #pragma HLS UNROLL
+    //#pragma HLS unroll region factor=loop_lim_inner
         KernelLoop:
         for (int kernel_col = 0; kernel_col < CONFIG_T::filt_width; kernel_col++) {
-            #pragma HLS unroll region factor=loop_lim_innermost
+            //#pragma HLS unroll region factor=loop_lim_innermost
             int input_col = -CONFIG_T::pad_left + kernel_col * CONFIG_T::dilation + col * CONFIG_T::stride_width;
             if (input_col >= 0 && input_col < CONFIG_T::in_width) {
                 //*(data_col++) = data[input_col];
@@ -203,12 +203,12 @@ void im2col_1d_cl(data_T data[CONFIG_T::in_width * CONFIG_T::n_chan], data_T dat
 
     KernelLoop:
     for (int kernel_col = 0; kernel_col < CONFIG_T::filt_width; kernel_col++) {
-        //#pragma HLS UNROLL
-        #pragma HLS unroll region factor=loop_lim_inner
+        #pragma HLS UNROLL
+        //#pragma HLS unroll region factor=loop_lim_inner
 
         ChannelLoop:
         for (int channel = 0; channel < CONFIG_T::n_chan; channel++) {
-            #pragma HLS unroll region factor=loop_lim_innermost
+            //#pragma HLS unroll region factor=loop_lim_innermost
             int index_data = (col*CONFIG_T::stride_width+kernel_col-CONFIG_T::pad_left) * CONFIG_T::n_chan + channel;
 
             if (index_data >= 0 && index_data < CONFIG_T::in_width*CONFIG_T::n_chan) {
