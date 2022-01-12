@@ -106,7 +106,8 @@ class VivadoWriter(Writer):
         If `pragma` is a tuple: (mode, type, factor) where mode is 'partition' or 'reshape', type is
         'complete', 'cyclic', or 'block', and factor is an integer only used when the type is not 'complete'.
         """
-        
+
+        _reshape_threshold_ = 2048  # TODO: make dynamic
         config = variable.pragma
         if type(config) is tuple:
             mode = config[0]
@@ -122,10 +123,21 @@ class VivadoWriter(Writer):
             factor = 0
 
         # TODO avoid FIFO waste?
-        # if mode == 'reshape':
-        #     return '//DOSA: automatically skipped ARRAY_RESHAPE for variable={}'.format(variable.name)
-        # if mode == 'partition':
-        #     return '//DOSA: automatically skipped ARRAY_PARTITION for variable={}'.format(variable.name)
+        #  65536 is maximum bitwidth
+        skip_pragma = False
+        try:
+            array_size = 1
+            for d in variable.shape:
+                array_size *= d
+            array_size *= variable.type.precision.fractional
+            if array_size > _reshape_threshold_:
+                skip_pragma = True
+        except Exception as e:
+            print("[DOSA/hls4ml:INFO} can't calculate size of {} due to error {}.".format(variable.name, e))
+        if skip_pragma and mode == 'reshape':
+            return '//DOSA: automatically skipped ARRAY_RESHAPE due to size for variable={}'.format(variable.name)
+        if skip_pragma and mode == 'partition':
+            return '//DOSA: automatically skipped ARRAY_PARTITION due to size for variable={}'.format(variable.name)
 
         # TODO: better not, since it then would change the output protocol?
         # if is_output and mode == 'partition':
@@ -164,17 +176,17 @@ class VivadoWriter(Writer):
             elif '//hls-fpga-machine-learning insert header' in line:
                 inputs_str = ', '.join([self.variable_definition_cpp(model, i, as_reference=True) for i in model_inputs])
                 outputs_str = ', '.join([self.variable_definition_cpp(model, o, as_reference=True) for o in model_outputs])
-                brams_str  = ', \n'.join([indent + self.variable_definition_cpp(model, b, as_reference=False) for b in model_brams])
-                # insize_str = ', '.join(['unsigned short &const_size_in_{}'.format(i) for i in range(1, len(model_inputs) + 1)])
-                # outsize_str = ', '.join(['unsigned short &const_size_out_{}'.format(i) for i in range(1, len(model_outputs) + 1)])
+                brams_str = ', \n'.join([indent + self.variable_definition_cpp(model, b, as_reference=False) for b in model_brams])
+                insize_str = ', '.join(['unsigned short &const_size_in_{}'.format(i) for i in range(1, len(model_inputs) + 1)])
+                outsize_str = ', '.join(['unsigned short &const_size_out_{}'.format(i) for i in range(1, len(model_outputs) + 1)])
 
                 newline = ''
-                newline += indent + inputs_str
-                newline += ',\n' + indent + outputs_str
+                newline += indent + inputs_str + ',\n'
+                newline += indent + outputs_str + ',\n'
                 if len(model_brams) > 0: 
-                    newline += ',\n' + brams_str
-                # newline += indent + insize_str + ',\n'
-                # newline += indent + outsize_str + '\n'
+                    newline += brams_str + ',\n'
+                newline += indent + insize_str + ',\n'
+                newline += indent + outsize_str + '\n'
 
             elif '//hls-fpga-machine-learning insert load weights' in line:
                 newline = line
@@ -213,10 +225,10 @@ class VivadoWriter(Writer):
                         newline += indent + '#pragma HLS INTERFACE bram port={} \n'.format(','.join(all_brams))
                     newline += indent + '#pragma HLS DATAFLOW\n'
 
-                # inval_str = '\n    '.join(['const_size_in_{} = {};'.format(i, inp.size_cpp()) for i, inp in enumerate(model_inputs, 1)])
-                # outval_str = '\n    '.join(['const_size_out_{} = {};'.format(i, out.size_cpp()) for i, out in enumerate(model_outputs, 1)])
-                # newline += '\n' + indent + inval_str
-                # newline += '\n' + indent + outval_str
+                inval_str = '\n    '.join(['const_size_in_{} = {};'.format(i, inp.size_cpp()) for i, inp in enumerate(model_inputs, 1)])
+                outval_str = '\n    '.join(['const_size_out_{} = {};'.format(i, out.size_cpp()) for i, out in enumerate(model_outputs, 1)])
+                newline += '\n' + indent + inval_str
+                newline += '\n' + indent + outval_str
                 newline += '\n'
 
             elif '//hls-fpga-machine-learning insert layers' in line:
