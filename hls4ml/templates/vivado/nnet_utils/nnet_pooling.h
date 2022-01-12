@@ -57,11 +57,11 @@ T avg(T (&x)[N]){
 enum Pool_Op { Max, Average }; // L2Norm };
 template<typename T, int N, Pool_Op op>
 T pool_op(T (&x)[N]){
-  switch(op){
-  case Max: return max<T, N>(x);
-  case Average: return avg(x);
-  // case L2Norm: return l2norm<T, N>(x);
-  }
+	switch(op){
+	case Max: return max<T, N>(x);
+	case Average: return avg(x);
+	// case L2Norm: return l2norm<T, N>(x);
+	}
 }
 
 template<typename T, Pool_Op op>
@@ -93,11 +93,6 @@ struct pooling1d_config{
   static const unsigned pad_right = 0;
   // Pooling function
   static const Pool_Op pool_op = Max;
-  //loop info
-  static const unsigned loop_lim_outermost = 64;
-  static const unsigned loop_lim_outer = 64;
-  static const unsigned loop_lim_inner = 64;
-  static const unsigned loop_lim_innermost = 64;
 };
 
 template<typename CONFIG_T>
@@ -118,19 +113,11 @@ void pooling1d_cl(data_T data[CONFIG_T::n_in * CONFIG_T::n_filt], res_T res[CONF
   if (CONFIG_T::pad_left == 0 && CONFIG_T::pad_right == 0) {
     padded_width -= padded_width - (padded_width / CONFIG_T::stride_width * CONFIG_T::stride_width);
   }
-  
-  const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
-  const int loop_lim_outer = CONFIG_T::loop_lim_outer;
-  const int loop_lim_inner = CONFIG_T::loop_lim_inner;
-  const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
 
   for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
     // Loop over input image x in steps of stride
-    //#pragma HLS unroll region factor=loop_lim_outer
     for(int ii = 0; ii < padded_width; ii += CONFIG_T::stride_width) {
-      //#pragma HLS unroll region factor=loop_lim_inner
       data_T pool[CONFIG_T::pool_width];
-      #pragma HLS ARRAY_PARTITION variable=pool complete
       // Keep track of number of pixels in image vs padding region
       unsigned img_overlap = 0;
       // Loop over pool window x
@@ -168,16 +155,9 @@ void global_pooling1d_cl(data_T data[CONFIG_T::n_in * CONFIG_T::n_filt], res_T r
   const int limit = pool_op_limit_1d<CONFIG_T>();
   #pragma HLS ALLOCATION instances=pool_op limit=limit function
 
-  const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
-  const int loop_lim_outer = CONFIG_T::loop_lim_outer;
-  const int loop_lim_inner = CONFIG_T::loop_lim_inner;
-  const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
-  
   for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
-    //#pragma HLS unroll region factor=loop_lim_inner
     data_T pool[CONFIG_T::n_in];
     for(int jj = 0; jj < CONFIG_T::n_in; jj++) {
-    //#pragma HLS unroll region factor=loop_lim_innermost
       pool[jj] = data[jj * CONFIG_T::n_filt + ff];
     }
   // do the pooling
@@ -205,12 +185,6 @@ struct pooling2d_config{
   static const Pool_Op pool_op = Max;
   // Reuse
   static const unsigned reuse = 1;
-    
-  //loop info
-  static const unsigned loop_lim_outermost = 64;
-  static const unsigned loop_lim_outer = 64;
-  static const unsigned loop_lim_inner = 64;
-  static const unsigned loop_lim_innermost = 64;
   
   // Internal data type definitions
   typedef float accum_t;
@@ -239,30 +213,20 @@ void pooling2d_cl(data_T data[CONFIG_T::in_height * CONFIG_T::in_width * CONFIG_
     padded_width -= padded_width - (padded_width / CONFIG_T::stride_width * CONFIG_T::stride_width);
   }
 
-  const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
-  const int loop_lim_outer = CONFIG_T::loop_lim_outer;
-  const int loop_lim_inner = CONFIG_T::loop_lim_inner;
-  const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
-
   for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
     // Loop over input image y in steps of stride
-    //#pragma HLS unroll region factor=loop_lim_outermost
     for(int ii = 0; ii < padded_height; ii += CONFIG_T::stride_height){
       // Loop over input image x in steps of stride
-      //#pragma HLS unroll region factor=loop_lim_outer
       for(int jj = 0; jj < padded_width; jj += CONFIG_T::stride_width){
-        //#pragma HLS unroll region factor=loop_lim_inner
         data_T pool[CONFIG_T::pool_height * CONFIG_T::pool_width];
         #pragma HLS ARRAY_PARTITION variable=pool complete
         // Keep track of number of pixels in image vs padding region
         unsigned img_overlap = 0;
         // Loop over pool window y
         for(int kk = 0; kk < CONFIG_T::stride_height; kk++){
-        //#pragma HLS unroll region factor=loop_lim_innermost
           // Loop over pool window x
           for(int ll = 0; ll < CONFIG_T::stride_width; ll++){
-            #pragma HLS unroll region //complete
-            //#pragma HLS unroll region factor=loop_lim_innermost
+            #pragma HLS unroll region
             if(ii+kk < CONFIG_T::pad_top || ii+kk >= (padded_height - CONFIG_T::pad_bottom) || jj+ll < CONFIG_T::pad_left || jj+ll >= (padded_width - CONFIG_T::pad_right)){
               // Add padding
               pool[kk * CONFIG_T::stride_width + ll] = pad_val<data_T, CONFIG_T::pool_op>();
@@ -302,31 +266,20 @@ void pooling2d_cf(data_T data[CONFIG_T::in_height * CONFIG_T::in_width * CONFIG_
     padded_width -= padded_width - (padded_width / CONFIG_T::stride_width * CONFIG_T::stride_width);
   }
 
-
-  const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
-  const int loop_lim_outer = CONFIG_T::loop_lim_outer;
-  const int loop_lim_inner = CONFIG_T::loop_lim_inner;
-  const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
-
   for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
     // Loop over input image y in steps of stride
-    //#pragma HLS unroll region factor=loop_lim_outermost
     for(int ii = 0; ii < padded_height; ii += CONFIG_T::stride_height){
       // Loop over input image x in steps of stride
-      //#pragma HLS unroll region factor=loop_lim_outer
       for(int jj = 0; jj < padded_width; jj += CONFIG_T::stride_width){
-        //#pragma HLS unroll region factor=loop_lim_inner
         data_T pool[CONFIG_T::pool_height * CONFIG_T::pool_width];
         //#pragma HLS ARRAY_PARTITION variable=pool complete
         // Keep track of number of pixels in image vs padding region
         unsigned img_overlap = 0;
         // Loop over pool window y
         for(int kk = 0; kk < CONFIG_T::stride_height; kk++){
-          //#pragma HLS unroll region factor=loop_lim_innermost
           // Loop over pool window x
           for(int ll = 0; ll < CONFIG_T::stride_width; ll++){
-            #pragma HLS unroll region //complete
-            //#pragma HLS unroll region factor=loop_lim_innermost
+            #pragma HLS unroll region
             if(ii+kk < CONFIG_T::pad_top || ii+kk >= (padded_height - CONFIG_T::pad_bottom) || jj+ll < CONFIG_T::pad_left || jj+ll >= (padded_width - CONFIG_T::pad_right)){
               // Add padding
               pool[kk * CONFIG_T::stride_width + ll] = pad_val<data_T, CONFIG_T::pool_op>();

@@ -61,14 +61,8 @@ void conv_2d_latency_cf(
     typename CONFIG_T::accum_t mult[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan * CONFIG_T::filt_height * CONFIG_T::filt_width];
     typename CONFIG_T::accum_t acc[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt];
 
-    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan * CONFIG_T::filt_height * CONFIG_T::filt_width <= 4096)
-    {
-      #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
-    }
-    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt <= 4096)
-    {
-      #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
-    }
+    #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
+    #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
 
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
     #pragma HLS function_instantiate variable=weights,biases
@@ -81,25 +75,15 @@ void conv_2d_latency_cf(
     //const int multiplier_limit = compute_multiplier_limit_conv2d<CONFIG_T>(weights);
     const int multiplier_limit = CONFIG_T::mult_limit;
     #pragma HLS ALLOCATION instances=mul limit=multiplier_limit operation
-  
-    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
-    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
-    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
-    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
 
     // Convolve, saving all multiplication results to accumulate later
     ConvOutHeight: for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
-        //#pragma HLS unroll region factor=loop_lim_outermost
         ConvOutWidth: for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
-            //#pragma HLS unroll region factor=loop_lim_outermost
             ConvFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
-                //#pragma HLS unroll region factor=loop_lim_outermost
                 ConvChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
-                    //#pragma HLS unroll region factor=loop_lim_outer
                     ConvFiltHeight: for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
-                        //#pragma HLS unroll region factor=loop_lim_inner
                         ConvFiltWidth: for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
-                            //#pragma HLS unroll region factor=loop_lim_innermost
+
                             int index_mult = oh*CONFIG_T::out_width*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ow*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ff*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
@@ -134,11 +118,8 @@ void conv_2d_latency_cf(
 
     // Initialize accumulator with input biases
     for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
-        //#pragma HLS unroll region factor=loop_lim_outer
         for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
-            //#pragma HLS unroll region factor=loop_lim_inner
             for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
-                //#pragma HLS unroll region factor=loop_lim_innermost
                 acc[oh*CONFIG_T::out_width*CONFIG_T::n_filt + ow*CONFIG_T::n_filt + ff]=biases[ff];
             }
         }
@@ -147,18 +128,12 @@ void conv_2d_latency_cf(
 
     // Accumulate multiplication result
     AccumOutHeight: for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
-        //#pragma HLS unroll region factor=loop_lim_outermost
         AccumOutWidth: for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
-          //#pragma HLS unroll region factor=loop_lim_outermost
             AccumFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
-            //#pragma HLS unroll region factor=loop_lim_outermost
                 //Do "dot product" sum within filter and sum over channels
                 AccumChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
-                    //#pragma HLS unroll region factor=loop_lim_outer
                     AccumDotHeight: for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
-                        //#pragma HLS unroll region factor=loop_lim_inner
                         AccumDotWidth: for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
-                            //#pragma HLS unroll region factor=loop_lim_innermost
 
                             int index_mult = oh*CONFIG_T::out_width*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ow*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
@@ -203,14 +178,8 @@ void conv_2d_latency_cl(
     typename CONFIG_T::accum_t mult[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan * CONFIG_T::filt_height * CONFIG_T::filt_width];
     typename CONFIG_T::accum_t acc[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt];
 
-    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan * CONFIG_T::filt_height * CONFIG_T::filt_width <= 4096)
-    {
-      #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
-    }
-    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt <= 4096)
-    {
-      #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
-    }
+    #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
+    #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
 
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
     #pragma HLS function_instantiate variable=weights,biases
@@ -224,24 +193,13 @@ void conv_2d_latency_cl(
     const int multiplier_limit = CONFIG_T::mult_limit;
     #pragma HLS ALLOCATION instances=mul limit=multiplier_limit operation
     
-    const int loop_lim_outermost = CONFIG_T::loop_lim_outermost;
-    const int loop_lim_outer = CONFIG_T::loop_lim_outer;
-    const int loop_lim_inner = CONFIG_T::loop_lim_inner;
-    const int loop_lim_innermost = CONFIG_T::loop_lim_innermost;
-
     // Convolve, saving all multiplication results to accumulate later
     ConvOutHeight: for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
-        //#pragma HLS unroll region factor=loop_lim_outermost
         ConvOutWidth: for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
-            //#pragma HLS unroll region factor=loop_lim_outermost
             ConvFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++){
-                //#pragma HLS unroll region factor=loop_lim_outermost
                 ConvChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
-                    //#pragma HLS unroll region factor=loop_lim_outer
                     ConvFiltHeight: for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
-                        //#pragma HLS unroll region factor=loop_lim_inner
                         ConvFiltWidth: for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
-                        //#pragma HLS unroll region factor=loop_lim_innermost
 
                             int index_mult = oh*CONFIG_T::out_width*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ow*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
@@ -287,18 +245,12 @@ void conv_2d_latency_cl(
 
     // Accumulate multiplication result
     AccumOutHeight: for(int oh = 0; oh < CONFIG_T::out_height; oh++) {
-        //#pragma HLS unroll region factor=loop_lim_outermost
         AccumOutWidth: for(int ow = 0; ow < CONFIG_T::out_width; ow++) {
-            //#pragma HLS unroll region factor=loop_lim_outermost
             AccumFilt: for(int ff = 0; ff < CONFIG_T::n_filt; ff++) {
-                //#pragma HLS unroll region factor=loop_lim_outermost
                 //Do "dot product" sum within filter and sum over channels
                 AccumChan: for(int cc = 0; cc < CONFIG_T::n_chan; cc++){
-                    //#pragma HLS unroll region factor=loop_lim_outer
                     AccumDotHeight: for(int fh = 0; fh < CONFIG_T::filt_height; fh++){
-                        //#pragma HLS unroll region factor=loop_lim_inner
                         AccumDotWidth: for(int fw = 0; fw < CONFIG_T::filt_width; fw++){
-                            //#pragma HLS unroll region factor=loop_lim_innermost
 
                             int index_mult = oh*CONFIG_T::out_width*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
                                            + ow*CONFIG_T::n_filt*CONFIG_T::n_chan*CONFIG_T::filt_height*CONFIG_T::filt_width
@@ -342,14 +294,8 @@ void pointwise_conv_2d_cl(
     typename CONFIG_T::accum_t mult[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan];
     typename CONFIG_T::accum_t acc[CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt];
 
-    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt * CONFIG_T::n_chan <= 4096)
-    {
-      #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
-    }
-    if(CONFIG_T::out_height * CONFIG_T::out_width * CONFIG_T::n_filt <= 4096)
-    {
-      #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
-    }
+    #pragma HLS ARRAY_PARTITION variable=mult complete dim=0
+    #pragma HLS ARRAY_PARTITION variable=acc complete dim=0
 
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
     #pragma HLS function_instantiate variable=weights,biases

@@ -538,10 +538,10 @@ class Layer(object):
             params[weight_name + '_t'] = variable.type.name
 
         params['mult_limit'] = math.ceil(int(self.get_attr('mult_limit', default=500)) / int(self.reuse_factor))
-        params['loop_lim_outermost'] = self.get_attr('loop_lim_outermost', default=100)
-        params['loop_lim_outer'] = self.get_attr('loop_lim_outer', default=100)
-        params['loop_lim_inner'] = self.get_attr('loop_lim_inner', default=100)
-        params['loop_lim_innermost'] = self.get_attr('loop_lim_innermost', default=100)
+        #params['loop_lim_outermost'] = self.get_attr('loop_lim_outermost', default=100)
+        #params['loop_lim_outer'] = self.get_attr('loop_lim_outer', default=100)
+        #params['loop_lim_inner'] = self.get_attr('loop_lim_inner', default=100)
+        #params['loop_lim_innermost'] = self.get_attr('loop_lim_innermost', default=100)
         return params
 
     def get_layer_precision(self):

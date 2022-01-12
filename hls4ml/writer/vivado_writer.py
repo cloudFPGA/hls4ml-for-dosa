@@ -122,10 +122,10 @@ class VivadoWriter(Writer):
             factor = 0
 
         # TODO avoid FIFO waste?
-        if mode == 'reshape':
-            return '//DOSA: automatically skipped ARRAY_RESHAPE for variable={}'.format(variable.name)
-        if mode == 'partition':
-            return '//DOSA: automatically skipped ARRAY_PARTITION for variable={}'.format(variable.name)
+        # if mode == 'reshape':
+        #     return '//DOSA: automatically skipped ARRAY_RESHAPE for variable={}'.format(variable.name)
+        # if mode == 'partition':
+        #     return '//DOSA: automatically skipped ARRAY_PARTITION for variable={}'.format(variable.name)
 
         if mode in ['partition', 'reshape']:
             if typ == 'complete':
