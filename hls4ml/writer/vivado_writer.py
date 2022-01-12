@@ -99,7 +99,7 @@ class VivadoWriter(Writer):
             os.makedirs("{}/firmware/weights".format(model.config.get_output_dir()))
 
     @staticmethod
-    def _make_array_pragma(variable):
+    def _make_array_pragma(variable, is_output=False):
         """
         Layers in hls_model.py can specify output array partitioning through the `pragma` attribute.
         If `pragma` is a string: options are 'partition', 'reshape', or 'stream'.
@@ -126,6 +126,10 @@ class VivadoWriter(Writer):
         #     return '//DOSA: automatically skipped ARRAY_RESHAPE for variable={}'.format(variable.name)
         # if mode == 'partition':
         #     return '//DOSA: automatically skipped ARRAY_PARTITION for variable={}'.format(variable.name)
+
+        # TODO: better not, since it then would change the output protocol?
+        # if is_output and mode == 'partition':
+        #     return '//DOSA: automatically skipped ARRAY_PARTITION for output variable={}'.format(variable.name)
 
         if mode in ['partition', 'reshape']:
             if typ == 'complete':
@@ -161,16 +165,16 @@ class VivadoWriter(Writer):
                 inputs_str = ', '.join([self.variable_definition_cpp(model, i, as_reference=True) for i in model_inputs])
                 outputs_str = ', '.join([self.variable_definition_cpp(model, o, as_reference=True) for o in model_outputs])
                 brams_str  = ', \n'.join([indent + self.variable_definition_cpp(model, b, as_reference=False) for b in model_brams])
-                insize_str = ', '.join(['unsigned short &const_size_in_{}'.format(i) for i in range(1, len(model_inputs) + 1)])
-                outsize_str = ', '.join(['unsigned short &const_size_out_{}'.format(i) for i in range(1, len(model_outputs) + 1)])
+                # insize_str = ', '.join(['unsigned short &const_size_in_{}'.format(i) for i in range(1, len(model_inputs) + 1)])
+                # outsize_str = ', '.join(['unsigned short &const_size_out_{}'.format(i) for i in range(1, len(model_outputs) + 1)])
 
                 newline = ''
-                newline += indent + inputs_str + ',\n'
-                newline += indent + outputs_str + ',\n'
+                newline += indent + inputs_str
+                newline += ',\n' + indent + outputs_str
                 if len(model_brams) > 0: 
-                    newline += brams_str + ',\n'
-                newline += indent + insize_str + ',\n'
-                newline += indent + outsize_str + '\n'
+                    newline += ',\n' + brams_str
+                # newline += indent + insize_str + ',\n'
+                # newline += indent + outsize_str + '\n'
 
             elif '//hls-fpga-machine-learning insert load weights' in line:
                 newline = line
@@ -193,26 +197,26 @@ class VivadoWriter(Writer):
 
                 if io_type == 'io_parallel':
                     for i in model_inputs: newline += indent + self._make_array_pragma(i) + '\n'
-                    for o in model_outputs: newline += indent + self._make_array_pragma(o) + '\n'
+                    for o in model_outputs: newline += indent + self._make_array_pragma(o, is_output=True) + '\n'
                     # TODO discussed adding a handle for setting the interface mode for individual input and output arrays (16.03.2020)
                     # Probably the handle doesn't need to be exposed to the user but should be just set in hls_model.py
 
                     # newline += indent + '#pragma HLS INTERFACE ap_vld port={},{} \n'.format(','.join(all_inputs), ','.join(all_outputs))
-                    newline += indent + '#pragma HLS INTERFACE ap_fifo port={},{} \n'.format(','.join(all_inputs), ','.join(all_outputs))
+                    newline += indent + '#pragma HLS INTERFACE ap_fifo port={},{}\n'.format(','.join(all_inputs), ','.join(all_outputs))
                     if model.config.model_strategy.lower() == 'resource':
-                        newline += indent + '#pragma HLS DATAFLOW \n'
+                        newline += indent + '#pragma HLS DATAFLOW\n'
                     else:
                         newline += indent + '#pragma HLS PIPELINE \n'
                 if io_type == 'io_serial' or io_type == 'io_stream':
                     newline += indent + '#pragma HLS INTERFACE axis port={},{} \n'.format(','.join(all_inputs), ','.join(all_outputs))
                     if all_brams: # No BRAM ports
                         newline += indent + '#pragma HLS INTERFACE bram port={} \n'.format(','.join(all_brams))
-                    newline += indent + '#pragma HLS DATAFLOW \n'
+                    newline += indent + '#pragma HLS DATAFLOW\n'
 
-                inval_str = '\n    '.join(['const_size_in_{} = {};'.format(i, inp.size_cpp()) for i, inp in enumerate(model_inputs, 1)])
-                outval_str = '\n    '.join(['const_size_out_{} = {};'.format(i, out.size_cpp()) for i, out in enumerate(model_outputs, 1)])
-                newline += '\n' + indent + inval_str
-                newline += '\n' + indent + outval_str
+                # inval_str = '\n    '.join(['const_size_in_{} = {};'.format(i, inp.size_cpp()) for i, inp in enumerate(model_inputs, 1)])
+                # outval_str = '\n    '.join(['const_size_out_{} = {};'.format(i, out.size_cpp()) for i, out in enumerate(model_outputs, 1)])
+                # newline += '\n' + indent + inval_str
+                # newline += '\n' + indent + outval_str
                 newline += '\n'
 
             elif '//hls-fpga-machine-learning insert layers' in line:
