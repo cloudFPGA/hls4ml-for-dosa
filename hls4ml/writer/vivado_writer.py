@@ -109,6 +109,7 @@ class VivadoWriter(Writer):
 
         _reshape_threshold_ = 2048  # TODO: make dynamic
         config = variable.pragma
+        depth = None
         if type(config) is tuple:
             mode = config[0]
             if mode in ['partition', 'reshape']:
@@ -125,11 +126,13 @@ class VivadoWriter(Writer):
         # TODO avoid FIFO waste?
         #  65536 is maximum bitwidth
         skip_pragma = False
+        array_size = variable.shape[0]
         try:
             array_size = 1
             for d in variable.shape:
                 array_size *= d
-            array_size *= variable.type.precision.fractional
+            # array_size *= variable.type.precision.fractional
+            array_size *= variable.type.precision.width
             if array_size > _reshape_threshold_:
                 skip_pragma = True
         except Exception as e:
@@ -152,6 +155,8 @@ class VivadoWriter(Writer):
             return template.format(mode=mode.upper(), name=variable.name, type=typ, factor=factor, dim=0)
 
         elif mode == 'stream':
+            if depth is None:
+                depth = array_size
             return '#pragma HLS STREAM variable={name} depth={depth}'.format(name=variable.name, depth=depth)
 
     def write_project_cpp(self, model):
