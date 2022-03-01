@@ -84,7 +84,8 @@ void dense_latency(
     // Do the matrix-multiply
     Product1: for(int ii = 0; ii < CONFIG_T::n_in; ii++) {
         if (CONFIG_T::io_type == io_serial){
-            #pragma HLS PIPELINE
+            //#pragma HLS PIPELINE
+            #pragma HLS PIPELINE II=CONFIG_T::reuse_factor
         }
         cache = data[ii];
         Product2: for(int jj = 0; jj < CONFIG_T::n_out; jj++) {
@@ -100,7 +101,8 @@ void dense_latency(
     // Initialize accumulator with input biases
     ResetAccum: for(int iacc = 0; iacc < CONFIG_T::n_out; iacc++) {
         if (CONFIG_T::io_type == io_serial){
-            #pragma HLS UNROLL
+            //#pragma HLS UNROLL
+            #pragma HLS PIPELINE II=CONFIG_T::reuse_factor
         }
         acc[iacc] = (typename CONFIG_T::accum_t) biases[iacc];
     }
@@ -108,7 +110,8 @@ void dense_latency(
     // Accumulate multiplication result
     Accum1: for(int ii = 0; ii < CONFIG_T::n_in; ii++) {
         if (CONFIG_T::io_type == io_serial){
-            #pragma HLS PIPELINE
+            #pragma HLS PIPELINE II=CONFIG_T::reuse_factor
+            //#pragma HLS PIPELINE
         }
         Accum2: for(int jj = 0; jj < CONFIG_T::n_out; jj++) {
         int index = ii*CONFIG_T::n_out+jj;
@@ -119,7 +122,8 @@ void dense_latency(
     // Cast to "res_t" type
     Result: for(int ires = 0; ires < CONFIG_T::n_out; ires++){
         if (CONFIG_T::io_type == io_serial){
-            #pragma HLS UNROLL
+            //#pragma HLS UNROLL
+            #pragma HLS PIPELINE II=CONFIG_T::reuse_factor
         }
         //res[ires] = (res_T) (acc[ires]);
         res[ires] = cast<data_T, res_T, CONFIG_T>(acc[ires]);

@@ -156,7 +156,9 @@ class VivadoWriter(Writer):
 
         elif mode == 'stream':
             if depth is None:
-                depth = array_size
+                # TODO...with io_stream, it is always one?
+                # depth = array_size
+                depth = 1
             return '#pragma HLS STREAM variable={name} depth={depth}'.format(name=variable.name, depth=depth)
 
     def write_project_cpp(self, model):
@@ -225,7 +227,15 @@ class VivadoWriter(Writer):
                     else:
                         newline += indent + '#pragma HLS PIPELINE \n'
                 if io_type == 'io_serial' or io_type == 'io_stream':
-                    newline += indent + '#pragma HLS INTERFACE axis port={},{} \n'.format(','.join(all_inputs), ','.join(all_outputs))
+                    # newline += indent + '#pragma HLS INTERFACE axis port={},{} \n'.format(','.join(all_inputs), ','.join(all_outputs))
+                    icnt = 0
+                    for inps in all_inputs:
+                        newline += indent + '#pragma HLS INTERFACE axis port={} name=input_{}\n'.format(inps, icnt)
+                        icnt += 1
+                    icnt = 0
+                    for outs in all_outputs:
+                        newline += indent + '#pragma HLS INTERFACE axis port={} name=output_{}\n'.format(outs, icnt)
+                        icnt += 1
                     if all_brams: # No BRAM ports
                         newline += indent + '#pragma HLS INTERFACE bram port={} \n'.format(','.join(all_brams))
                     newline += indent + '#pragma HLS DATAFLOW\n'
