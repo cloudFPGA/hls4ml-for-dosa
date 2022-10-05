@@ -225,7 +225,9 @@ class VivadoWriter(Writer):
                     if model.config.model_strategy.lower() == 'resource':
                         newline += indent + '#pragma HLS DATAFLOW\n'
                     else:
-                        newline += indent + '#pragma HLS PIPELINE \n'
+                        newline += indent + '#pragma HLS PIPELINE\n'
+                    # running constantly
+                    newline += indent + '#pragma HLS INTERFACE ap_ctrl_none port=return\n'
                 if io_type == 'io_serial' or io_type == 'io_stream':
                     # newline += indent + '#pragma HLS INTERFACE axis port={},{} \n'.format(','.join(all_inputs), ','.join(all_outputs))
                     icnt = 0
