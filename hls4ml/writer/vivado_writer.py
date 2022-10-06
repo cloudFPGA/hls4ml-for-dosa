@@ -221,7 +221,16 @@ class VivadoWriter(Writer):
                     # Probably the handle doesn't need to be exposed to the user but should be just set in hls_model.py
 
                     # newline += indent + '#pragma HLS INTERFACE ap_vld port={},{} \n'.format(','.join(all_inputs), ','.join(all_outputs))
-                    newline += indent + '#pragma HLS INTERFACE ap_fifo port={},{}\n'.format(','.join(all_inputs), ','.join(all_outputs))
+                    #
+                    # newline += indent + '#pragma HLS INTERFACE ap_fifo port={},{}\n'.format(','.join(all_inputs), ','.join(all_outputs))
+                    icnt = 0
+                    for inps in all_inputs:
+                        newline += indent + '#pragma HLS INTERFACE ap_fifo port={} name=input_{}\n'.format(inps, icnt)
+                        icnt += 1
+                    icnt = 0
+                    for outs in all_outputs:
+                        newline += indent + '#pragma HLS INTERFACE ap_fifo port={} name=output_{}\n'.format(outs, icnt)
+                        icnt += 1
                     if model.config.model_strategy.lower() == 'resource':
                         newline += indent + '#pragma HLS DATAFLOW\n'
                     else:
