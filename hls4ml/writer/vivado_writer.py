@@ -122,6 +122,10 @@ class VivadoWriter(Writer):
             mode = config
             typ = 'complete'
             factor = 0
+        # in both cases?
+        if is_output and mode != 'stream':
+            # TODO: make one wide interface?
+            mode = 'reshape'
 
         # TODO avoid FIFO waste?
         #  65536 is maximum bitwidth
