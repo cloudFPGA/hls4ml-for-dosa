@@ -42,7 +42,7 @@ void dense_latency(
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
     #pragma HLS function_instantiate variable=weights,biases
 
-    if (CONFIG_T::io_type == io_parallel || CONFIG_T::io_type == io_stream){
+    //if (CONFIG_T::io_type == io_parallel || CONFIG_T::io_type == io_stream){
         // For parallel inputs:
         //   - completely partition arrays -- target fabric
         //   - if we have an unroll factor, limit number of multipliers
@@ -62,30 +62,30 @@ void dense_latency(
         int multiplier_limit  = ceil(float(CONFIG_T::n_in*CONFIG_T::n_out) / float(CONFIG_T::reuse_factor)) - floor(float(CONFIG_T::n_zeros) / float(CONFIG_T::reuse_factor));
         CONFIG_T::template product<data_T, typename CONFIG_T::weight_t, typename CONFIG_T::accum_t>::limit(multiplier_limit);
 
-    } else if (CONFIG_T::io_type == io_serial){
-        // Only reduce cycle_factor if n_out is evenly divisible by reuse_factor
-        // Otherwise, HLS wont be happy
-        int cycle_factor = CONFIG_T::n_out / CONFIG_T::reuse_factor;
-        int reused_cycle = DIV_ROUNDUP(CONFIG_T::n_out, CONFIG_T::reuse_factor);
-        if (cycle_factor != reused_cycle) {
-            cycle_factor = CONFIG_T::n_out;
-        }
-        /*int cycle_factor = CONFIG_T::n_out;
-        float reused_cycle = CONFIG_T::n_out / CONFIG_T::reuse_factor;
-        if (reused_cycle == ceil(reused_cycle)){
-            // Dont use "ceil" here; as of 2018.2, HLS crashes mysteriously
-            cycle_factor = cycle_factor / CONFIG_T::reuse_factor;
-        }*/
-        #pragma HLS ARRAY_PARTITION variable=weights cyclic factor=cycle_factor
-        #pragma HLS ARRAY_PARTITION variable=mult cyclic factor=cycle_factor
-        #pragma HLS ARRAY_PARTITION variable=acc complete
-        #pragma HLS DATAFLOW
-        #pragma HLS STREAM variable=mult depth=1
-        #pragma HLS STREAM variable=acc depth=1
-        if (CONFIG_T::store_weights_in_bram){
-            #pragma HLS RESOURCE variable=weights core=ROM_2P_BRAM
-        }
-    }
+    //} else if (CONFIG_T::io_type == io_serial){
+    //    // Only reduce cycle_factor if n_out is evenly divisible by reuse_factor
+    //    // Otherwise, HLS wont be happy
+    //    int cycle_factor = CONFIG_T::n_out / CONFIG_T::reuse_factor;
+    //    int reused_cycle = DIV_ROUNDUP(CONFIG_T::n_out, CONFIG_T::reuse_factor);
+    //    if (cycle_factor != reused_cycle) {
+    //        cycle_factor = CONFIG_T::n_out;
+    //    }
+    //    /*int cycle_factor = CONFIG_T::n_out;
+    //    float reused_cycle = CONFIG_T::n_out / CONFIG_T::reuse_factor;
+    //    if (reused_cycle == ceil(reused_cycle)){
+    //        // Dont use "ceil" here; as of 2018.2, HLS crashes mysteriously
+    //        cycle_factor = cycle_factor / CONFIG_T::reuse_factor;
+    //    }*/
+    //    #pragma HLS ARRAY_PARTITION variable=weights cyclic factor=cycle_factor
+    //    #pragma HLS ARRAY_PARTITION variable=mult cyclic factor=cycle_factor
+    //    #pragma HLS ARRAY_PARTITION variable=acc complete
+    //    #pragma HLS DATAFLOW
+    //    #pragma HLS STREAM variable=mult depth=1
+    //    #pragma HLS STREAM variable=acc depth=1
+    //    if (CONFIG_T::store_weights_in_bram){
+    //        #pragma HLS RESOURCE variable=weights core=ROM_2P_BRAM
+    //    }
+    //}
 
     // Do the matrix-multiply
     Product1: for(int ii = 0; ii < CONFIG_T::n_in; ii++) {
