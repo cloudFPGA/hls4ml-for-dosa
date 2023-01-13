@@ -52,7 +52,7 @@ void dense_latency(
         //  #pragma HLS LATENCY max=1
         //}
         //THIS block is IGNORED...I don't know why (some constant folding?), so here in different form
-        #pragma HLS LATENCY max=CONFIG_T::reuse_factor
+        //#pragma HLS LATENCY max=CONFIG_T::reuse_factor
 
         // #pragma HLS ARRAY_PARTITION variable=weights complete // remove this line for now, it breaks compression sometimes
         #pragma HLS ARRAY_PARTITION variable=biases complete
