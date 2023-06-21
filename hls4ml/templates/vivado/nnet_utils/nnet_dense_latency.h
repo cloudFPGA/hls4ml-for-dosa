@@ -42,54 +42,54 @@ void dense_latency(
     // Use a function_instantiate in case it helps to explicitly optimize unchanging weights/biases
     #pragma HLS function_instantiate variable=weights,biases
 
-    //if (CONFIG_T::io_type == io_parallel || CONFIG_T::io_type == io_stream){
-        // For parallel inputs:
-        //   - completely partition arrays -- target fabric
-        //   - if we have an unroll factor, limit number of multipliers
-        #pragma HLS PIPELINE II=CONFIG_T::reuse_factor enable_flush
-        //if (CONFIG_T::reuse_factor == 1)
-        //{
-        //  #pragma HLS LATENCY max=1
-        //}
-        //THIS block is IGNORED...I don't know why (some constant folding?), so here in different form
-        //#pragma HLS LATENCY max=CONFIG_T::reuse_factor
+    if (CONFIG_T::io_type == io_parallel || CONFIG_T::io_type == io_stream){
+      // For parallel inputs:
+      //   - completely partition arrays -- target fabric
+      //   - if we have an unroll factor, limit number of multipliers
+      #pragma HLS PIPELINE II=CONFIG_T::reuse_factor enable_flush
+      //if (CONFIG_T::reuse_factor == 1)
+      //{
+      //  #pragma HLS LATENCY max=1
+      //}
+      //THIS block is IGNORED...I don't know why (some constant folding?), so here in different form
+      //#pragma HLS LATENCY max=CONFIG_T::reuse_factor
 
-        // #pragma HLS ARRAY_PARTITION variable=weights complete // remove this line for now, it breaks compression sometimes
-        #pragma HLS ARRAY_PARTITION variable=biases complete
-        #pragma HLS ARRAY_PARTITION variable=mult complete
+      // #pragma HLS ARRAY_PARTITION variable=weights complete // remove this line for now, it breaks compression sometimes
+      #pragma HLS ARRAY_PARTITION variable=biases complete
+      #pragma HLS ARRAY_PARTITION variable=mult complete
+      #pragma HLS ARRAY_PARTITION variable=acc complete
+
+      int multiplier_limit  = ceil(float(CONFIG_T::n_in*CONFIG_T::n_out) / float(CONFIG_T::reuse_factor)) - floor(float(CONFIG_T::n_zeros) / float(CONFIG_T::reuse_factor));
+      CONFIG_T::template product<data_T, typename CONFIG_T::weight_t, typename CONFIG_T::accum_t>::limit(multiplier_limit);
+
+    } else if (CONFIG_T::io_type == io_serial){
+        // Only reduce cycle_factor if n_out is evenly divisible by reuse_factor
+        // Otherwise, HLS wont be happy
+        int cycle_factor = CONFIG_T::n_out / CONFIG_T::reuse_factor;
+        int reused_cycle = DIV_ROUNDUP(CONFIG_T::n_out, CONFIG_T::reuse_factor);
+        if (cycle_factor != reused_cycle) {
+            cycle_factor = CONFIG_T::n_out;
+        }
+        /*int cycle_factor = CONFIG_T::n_out;
+        float reused_cycle = CONFIG_T::n_out / CONFIG_T::reuse_factor;
+        if (reused_cycle == ceil(reused_cycle)){
+            // Dont use "ceil" here; as of 2018.2, HLS crashes mysteriously
+            cycle_factor = cycle_factor / CONFIG_T::reuse_factor;
+        }*/
+        #pragma HLS ARRAY_PARTITION variable=weights cyclic factor=cycle_factor
+        #pragma HLS ARRAY_PARTITION variable=mult cyclic factor=cycle_factor
         #pragma HLS ARRAY_PARTITION variable=acc complete
-
-        int multiplier_limit  = ceil(float(CONFIG_T::n_in*CONFIG_T::n_out) / float(CONFIG_T::reuse_factor)) - floor(float(CONFIG_T::n_zeros) / float(CONFIG_T::reuse_factor));
-        CONFIG_T::template product<data_T, typename CONFIG_T::weight_t, typename CONFIG_T::accum_t>::limit(multiplier_limit);
-
-    //} else if (CONFIG_T::io_type == io_serial){
-    //    // Only reduce cycle_factor if n_out is evenly divisible by reuse_factor
-    //    // Otherwise, HLS wont be happy
-    //    int cycle_factor = CONFIG_T::n_out / CONFIG_T::reuse_factor;
-    //    int reused_cycle = DIV_ROUNDUP(CONFIG_T::n_out, CONFIG_T::reuse_factor);
-    //    if (cycle_factor != reused_cycle) {
-    //        cycle_factor = CONFIG_T::n_out;
-    //    }
-    //    /*int cycle_factor = CONFIG_T::n_out;
-    //    float reused_cycle = CONFIG_T::n_out / CONFIG_T::reuse_factor;
-    //    if (reused_cycle == ceil(reused_cycle)){
-    //        // Dont use "ceil" here; as of 2018.2, HLS crashes mysteriously
-    //        cycle_factor = cycle_factor / CONFIG_T::reuse_factor;
-    //    }*/
-    //    #pragma HLS ARRAY_PARTITION variable=weights cyclic factor=cycle_factor
-    //    #pragma HLS ARRAY_PARTITION variable=mult cyclic factor=cycle_factor
-    //    #pragma HLS ARRAY_PARTITION variable=acc complete
-    //    #pragma HLS DATAFLOW
-    //    #pragma HLS STREAM variable=mult depth=1
-    //    #pragma HLS STREAM variable=acc depth=1
-    //    if (CONFIG_T::store_weights_in_bram){
-    //        #pragma HLS RESOURCE variable=weights core=ROM_2P_BRAM
-    //    }
-    //}
+        #pragma HLS DATAFLOW
+        #pragma HLS STREAM variable=mult depth=1
+        #pragma HLS STREAM variable=acc depth=1
+        if (CONFIG_T::store_weights_in_bram){
+            #pragma HLS RESOURCE variable=weights core=ROM_2P_BRAM
+        }
+    }
 
     // Do the matrix-multiply
     Product1: for(int ii = 0; ii < CONFIG_T::n_in; ii++) {
-        if (CONFIG_T::io_type == io_serial){
+        if (CONFIG_T::io_type == io_serial || CONFIG_T::n_in > 128){
             //#pragma HLS PIPELINE
             #pragma HLS PIPELINE II=CONFIG_T::reuse_factor
         }
